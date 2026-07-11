@@ -1,36 +1,38 @@
 /*=========================================================
     APP.JS
-    Прокат игрушек — Админ-панель
-    Версия 3.0 (с управлением сроками аренды)
+    Прокат игрушек — Админ-панель с Firebase
+    Версия 4.0 (облачная синхронизация)
 =========================================================*/
 
 "use strict";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCGVN_aD4WL-3eTX8GM2vPgGsFhwcd3ZX4",
+  authDomain: "igrushki-6a93c.firebaseapp.com",
+  projectId: "igrushki-6a93c",
+  storageBucket: "igrushki-6a93c.firebasestorage.app",
+  messagingSenderId: "1085039924771",
+  appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
+};
+
+// Инициализация Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
 /*=========================================================
     STORAGE KEYS
 =========================================================*/
 
-const STORAGE_KEY = "toy_catalog";
-const LOGIN_KEY   = "toy_admin";
-
-/*=========================================================
-    🔐 КОНФИГУРАЦИЯ АДМИНА (измените здесь)
-=========================================================*/
-
-// ⚠️ ВНИМАНИЕ: Здесь хранятся логин и пароль для входа в админку
-// Вы можете изменить их на свои!
-const ADMIN_CREDENTIALS = {
-    login: "admin",      // ← Измените логин
-    password: "admin"    // ← Измените пароль
-};
+const LOGIN_KEY = "toy_admin";
 
 /*=========================================================
     DATA
 =========================================================*/
 
-let catalog      = [];
+let catalog = [];
 let selectedFile = null;
-let editId       = null;
+let editId = null;
 
 /*=========================================================
     SHORTCUT
@@ -79,18 +81,6 @@ const ui = {
 };
 
 /*=========================================================
-    STORAGE OPERATIONS
-=========================================================*/
-
-function load() {
-    catalog = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-}
-
-function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
-}
-
-/*=========================================================
     TOAST NOTIFICATION
 =========================================================*/
 
@@ -105,7 +95,7 @@ function toast(text) {
 }
 
 /*=========================================================
-    LOGIN / LOGOUT (использует ADMIN_CREDENTIALS)
+    AUTHENTICATION (Firebase)
 =========================================================*/
 
 function isLogged() {
@@ -117,26 +107,55 @@ function refreshLoginUI() {
     ui.admin.classList.toggle("hidden", !isLogged());
 }
 
-function login() {
-    // Проверка логина и пароля из конфигурации
-    if (ui.loginInput.value === ADMIN_CREDENTIALS.login && 
-        ui.passwordInput.value === ADMIN_CREDENTIALS.password) {
+async function login() {
+    const email = ui.loginInput.value.trim();
+    const password = ui.passwordInput.value.trim();
+
+    if (!email || !password) {
+        toast("Введите логин и пароль");
+        return;
+    }
+
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
         localStorage.setItem(LOGIN_KEY, "1");
         refreshLoginUI();
         ui.loginInput.value = "";
         ui.passwordInput.value = "";
         toast("Добро пожаловать!");
-    } else {
+        loadCatalog();
+    } catch (error) {
+        console.error("Ошибка входа:", error);
         toast("Неверный логин или пароль");
         ui.passwordInput.value = "";
     }
 }
 
-function logout() {
-    localStorage.removeItem(LOGIN_KEY);
-    refreshLoginUI();
-    toast("Вы вышли");
+async function logout() {
+    try {
+        await auth.signOut();
+        localStorage.removeItem(LOGIN_KEY);
+        refreshLoginUI();
+        toast("Вы вышли");
+        catalog = [];
+        render();
+    } catch (error) {
+        console.error("Ошибка выхода:", error);
+    }
 }
+
+// Проверяем состояние авторизации при загрузке
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        localStorage.setItem(LOGIN_KEY, "1");
+    } else {
+        localStorage.removeItem(LOGIN_KEY);
+    }
+    refreshLoginUI();
+    if (user) {
+        loadCatalog();
+    }
+});
 
 /*=========================================================
     HELPERS
@@ -156,7 +175,6 @@ const statusClass = {
     soon: "status-soon"
 };
 
-// Форматирование даты для отображения
 function formatDate(dateStr) {
     if (!dateStr) return "";
     const parts = dateStr.split("-");
@@ -166,7 +184,6 @@ function formatDate(dateStr) {
     return dateStr;
 }
 
-// Расчет количества дней аренды
 function getRentalDays(startDate, endDate) {
     if (!startDate || !endDate) return 0;
     const start = new Date(startDate);
@@ -185,18 +202,6 @@ function getDaysWord(days) {
 }
 
 /*=========================================================
-    STATISTICS
-=========================================================*/
-
-function updateStats() {
-    ui.total.textContent = catalog.length;
-    ui.available.textContent = catalog.filter(x => x.status === "available").length;
-    ui.rented.textContent   = catalog.filter(x => x.status === "rented").length;
-    ui.soon.textContent     = catalog.filter(x => x.status === "soon").length;
-    ui.count.textContent    = catalog.length + " товаров";
-}
-
-/*=========================================================
     TOGGLE RENT DATES
 =========================================================*/
 
@@ -210,12 +215,10 @@ function toggleRentDates(status) {
     }
 }
 
-// Следим за изменением статуса в форме добавления
 $("itemStatus").addEventListener("change", function() {
     toggleRentDates(this.value);
 });
 
-// Следим за изменением статуса в форме редактирования
 ui.editStatus.addEventListener("change", function() {
     const wrap = document.getElementById("editRentWrap");
     if (this.value === "rented") {
@@ -295,9 +298,27 @@ ui.uploadArea.addEventListener("drop", e => {
 });
 
 /*=========================================================
-    ADD ITEM
+    CRUD OPERATIONS (Firebase)
 =========================================================*/
 
+// Загрузка каталога из Firebase
+function loadCatalog() {
+    db.collection("catalog")
+      .orderBy("createdAt", "desc")
+      .onSnapshot((snapshot) => {
+          catalog = [];
+          snapshot.forEach((doc) => {
+              catalog.push({ firebaseId: doc.id, ...doc.data() });
+          });
+          render();
+          updateStats();
+      }, (error) => {
+          console.error("Ошибка загрузки:", error);
+          toast("Ошибка загрузки каталога");
+      });
+}
+
+// Добавление товара
 async function addItem(e) {
     e.preventDefault();
     const name = $("itemName").value.trim();
@@ -314,7 +335,6 @@ async function addItem(e) {
     const rentStart = ui.rentStart.value;
     const rentEnd = ui.rentEnd.value;
 
-    // Проверка дат для аренды
     if (status === "rented") {
         if (!rentStart || !rentEnd) {
             toast("Укажите даты начала и окончания аренды");
@@ -328,29 +348,86 @@ async function addItem(e) {
         }
     }
 
-    catalog.unshift({
-        id: createId(),
+    const newItem = {
         name: name,
         status: status,
         rentStart: status === "rented" ? rentStart : "",
         rentEnd: status === "rented" ? rentEnd : "",
         media: await toBase64(selectedFile),
-        mediaType: selectedFile.type.startsWith("video") ? "video" : "image"
-    });
+        mediaType: selectedFile.type.startsWith("video") ? "video" : "image",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
-    save();
-    render();
-    ui.form.reset();
-    clearPreview();
-    ui.rentedWrap.classList.add("hidden");
-    toast("Товар добавлен");
+    try {
+        await db.collection("catalog").add(newItem);
+        ui.form.reset();
+        clearPreview();
+        ui.rentedWrap.classList.add("hidden");
+        toast("Товар добавлен");
+    } catch (error) {
+        console.error("Ошибка добавления:", error);
+        toast("Ошибка добавления товара");
+    }
 }
 
 ui.form.addEventListener("submit", addItem);
 
+// Удаление товара
+async function deleteItem(id) {
+    const item = getItem(id);
+    if (!item) return;
+    if (!confirm(`Удалить "${item.name}"?`)) return;
+    
+    try {
+        await db.collection("catalog").doc(item.firebaseId).delete();
+        toast("Товар удалён");
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        toast("Ошибка удаления товара");
+    }
+}
+
+// Обновление товара
+async function updateItem(id, data) {
+    const item = getItem(id);
+    if (!item) return;
+    
+    try {
+        await db.collection("catalog").doc(item.firebaseId).update(data);
+        toast("Изменения сохранены");
+    } catch (error) {
+        console.error("Ошибка обновления:", error);
+        toast("Ошибка сохранения изменений");
+    }
+}
+
+// Копирование товара
+async function copyItem(id) {
+    const item = getItem(id);
+    if (!item) return;
+    
+    const copy = { ...item };
+    delete copy.firebaseId;
+    delete copy.id;
+    copy.name = item.name + " (копия)";
+    copy.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    
+    try {
+        await db.collection("catalog").add(copy);
+        toast("Копия создана");
+    } catch (error) {
+        console.error("Ошибка копирования:", error);
+        toast("Ошибка создания копии");
+    }
+}
+
 /*=========================================================
     FILTERING & SORTING
 =========================================================*/
+
+function getItem(id) {
+    return catalog.find(item => item.id === id);
+}
 
 function getVisibleItems() {
     let arr = [...catalog];
@@ -388,7 +465,7 @@ function getVisibleItems() {
 }
 
 /*=========================================================
-    RENDER CATALOG CARDS
+    RENDER
 =========================================================*/
 
 function createCard(item) {
@@ -433,15 +510,21 @@ function render() {
                 <p>Добавьте первый товар через форму выше.</p>
             </div>
         `;
-        updateStats();
         return;
     }
     ui.list.innerHTML = items.map(createCard).join("");
-    updateStats();
+}
+
+function updateStats() {
+    ui.total.textContent = catalog.length;
+    ui.available.textContent = catalog.filter(x => x.status === "available").length;
+    ui.rented.textContent   = catalog.filter(x => x.status === "rented").length;
+    ui.soon.textContent     = catalog.filter(x => x.status === "soon").length;
+    ui.count.textContent    = catalog.length + " товаров";
 }
 
 /*=========================================================
-    EVENT DELEGATION (Edit / Copy / Delete)
+    EVENT DELEGATION
 =========================================================*/
 
 ui.list.addEventListener("click", e => {
@@ -464,7 +547,7 @@ ui.list.addEventListener("click", e => {
 });
 
 /*=========================================================
-    SEARCH / FILTER / SORT LISTENERS
+    SEARCH / FILTER / SORT
 =========================================================*/
 
 ui.search.addEventListener("input", render);
@@ -474,10 +557,6 @@ ui.sort.addEventListener("change", render);
 /*=========================================================
     EDITOR
 =========================================================*/
-
-function getItem(id) {
-    return catalog.find(item => item.id === id);
-}
 
 function openEditor(id) {
     const item = getItem(id);
@@ -489,7 +568,6 @@ function openEditor(id) {
     ui.editRentEnd.value = item.rentEnd || "";
     ui.editFile.value = "";
 
-    // Показываем/скрываем поля дат аренды
     const wrap = document.getElementById("editRentWrap");
     if (item.status === "rented") {
         wrap.classList.remove("hidden");
@@ -516,11 +594,12 @@ ui.editForm.addEventListener("submit", async e => {
     const item = getItem(editId);
     if (!item) return;
 
-    item.name = ui.editName.value.trim();
-    item.status = ui.editStatus.value;
+    const data = {
+        name: ui.editName.value.trim(),
+        status: ui.editStatus.value
+    };
 
-    // Обновляем даты аренды
-    if (item.status === "rented") {
+    if (data.status === "rented") {
         const start = ui.editRentStart.value;
         const end = ui.editRentEnd.value;
         if (!start || !end) {
@@ -531,54 +610,22 @@ ui.editForm.addEventListener("submit", async e => {
             toast("Дата окончания должна быть позже даты начала");
             return;
         }
-        item.rentStart = start;
-        item.rentEnd = end;
+        data.rentStart = start;
+        data.rentEnd = end;
     } else {
-        item.rentStart = "";
-        item.rentEnd = "";
+        data.rentStart = "";
+        data.rentEnd = "";
     }
 
     if (ui.editFile.files.length) {
         const file = ui.editFile.files[0];
-        item.media = await toBase64(file);
-        item.mediaType = file.type.startsWith("video") ? "video" : "image";
+        data.media = await toBase64(file);
+        data.mediaType = file.type.startsWith("video") ? "video" : "image";
     }
 
-    save();
-    render();
+    await updateItem(editId, data);
     closeEditor();
-    toast("Изменения сохранены");
 });
-
-/*=========================================================
-    DELETE
-=========================================================*/
-
-function deleteItem(id) {
-    const item = getItem(id);
-    if (!item) return;
-    if (!confirm(`Удалить "${item.name}"?`)) return;
-    catalog = catalog.filter(x => x.id !== id);
-    save();
-    render();
-    toast("Товар удалён");
-}
-
-/*=========================================================
-    COPY
-=========================================================*/
-
-function copyItem(id) {
-    const item = getItem(id);
-    if (!item) return;
-    const copy = structuredClone(item);
-    copy.id = createId();
-    copy.name = item.name + " (копия)";
-    catalog.unshift(copy);
-    save();
-    render();
-    toast("Копия создана");
-}
 
 /*=========================================================
     KEYBOARD SHORTCUTS
@@ -605,10 +652,22 @@ ui.logoutBtn.onclick = logout;
     INITIALIZATION
 =========================================================*/
 
-load();
-refreshLoginUI();
-render();
-toast("Админ-панель готова");
+// Проверяем, авторизован ли пользователь
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        localStorage.setItem(LOGIN_KEY, "1");
+    } else {
+        localStorage.removeItem(LOGIN_KEY);
+    }
+    refreshLoginUI();
+    if (user) {
+        loadCatalog();
+    }
+});
 
-// Сохраняем состояние при закрытии страницы
-window.addEventListener("beforeunload", save);
+// Если уже авторизован, загружаем каталог
+if (isLogged()) {
+    loadCatalog();
+}
+
+toast("Админ-панель готова");

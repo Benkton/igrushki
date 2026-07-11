@@ -7,7 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  
   <style>
+    /* Все ваши стили остаются без изменений */
     :root{
       --bg:#fbfbfa;
       --card:#ffffff;
@@ -203,12 +209,6 @@
       color:var(--accent2);
     }
 
-    .card__date{
-      font-size:12px;
-      color:#7a7a7a;
-      margin-top:4px;
-    }
-
     .empty-catalog{
       grid-column:1/-1;
       text-align:center;
@@ -254,6 +254,13 @@
       font-size:22px;
       font-weight:800;
       color:#fff;
+    }
+
+    .loading{
+      grid-column:1/-1;
+      text-align:center;
+      padding:40px;
+      color:#888;
     }
 
     @media (max-width:1100px){
@@ -309,7 +316,7 @@
     </section>
 
     <section class="catalog" id="catalogContainer">
-      <!-- Карточки будут вставлены динамически через JavaScript -->
+      <div class="loading">⏳ Загрузка каталога...</div>
     </section>
   </main>
 
@@ -329,7 +336,19 @@
     (function() {
       "use strict";
 
-      const STORAGE_KEY = "toy_catalog";
+			const firebaseConfig = {
+		apiKey: "AIzaSyCGVN_aD4WL-3eTX8GM2vPgGsFhwcd3ZX4",
+		authDomain: "igrushki-6a93c.firebaseapp.com",
+		projectId: "igrushki-6a93c",
+		storageBucket: "igrushki-6a93c.firebasestorage.app",
+		messagingSenderId: "1085039924771",
+		appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
+		};
+
+      // Инициализация Firebase
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
       const catalogContainer = document.getElementById("catalogContainer");
 
       const statusName = {
@@ -342,15 +361,6 @@
         rented: "badge--rented",
         soon: "badge--soon"
       };
-
-      function loadCatalog() {
-        try {
-          const data = localStorage.getItem(STORAGE_KEY);
-          return data ? JSON.parse(data) : [];
-        } catch {
-          return [];
-        }
-      }
 
       function formatDate(dateStr) {
         if (!dateStr) return "";
@@ -407,9 +417,8 @@
         `;
       }
 
-      function renderCatalog() {
-        const items = loadCatalog();
-        if (!items.length) {
+      function renderCatalog(items) {
+        if (!items || !items.length) {
           catalogContainer.innerHTML = `
             <div class="empty-catalog">
               <h3>Каталог пуст</h3>
@@ -421,13 +430,31 @@
         catalogContainer.innerHTML = items.map(createCard).join("");
       }
 
-      window.addEventListener("storage", (e) => {
-        if (e.key === STORAGE_KEY) {
-          renderCatalog();
-        }
-      });
+      // Загрузка данных из Firebase
+      function loadCatalog() {
+        catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
+        
+        db.collection("catalog")
+          .orderBy("createdAt", "desc")
+          .onSnapshot((snapshot) => {
+            const items = [];
+            snapshot.forEach((doc) => {
+              items.push({ id: doc.id, ...doc.data() });
+            });
+            renderCatalog(items);
+          }, (error) => {
+            console.error("Ошибка загрузки:", error);
+            catalogContainer.innerHTML = `
+              <div class="empty-catalog">
+                <h3>❌ Ошибка загрузки</h3>
+                <p>Не удалось загрузить каталог. Проверьте подключение к интернету.</p>
+              </div>
+            `;
+          });
+      }
 
-      renderCatalog();
+      // Загружаем каталог при старте
+      loadCatalog();
     })();
   </script>
 </body>
