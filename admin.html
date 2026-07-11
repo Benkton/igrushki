@@ -8,12 +8,46 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* Дополнительные стили для поля описания */
+        .field textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid #dfe5ec;
+            background: #fff;
+            transition: .2s;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 80px;
+            max-height: 200px;
+        }
+        .field textarea:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 4px rgba(255,140,66,.12);
+        }
+        .field textarea::placeholder {
+            color: #999;
+        }
+        .admin-card__description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+            margin: 4px 0 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
 </head>
 <body data-page="admin">
 
@@ -120,19 +154,16 @@
                     <input id="itemName" type="text" placeholder="Например: LEGO Duplo" required>
                 </div>
                 <div class="field">
-                    <label for="mediaType">Тип медиа</label>
-                    <select id="mediaType">
-                        <option value="image">📷 Изображение</option>
-                        <option value="video">🎥 Видео</option>
-                    </select>
-                </div>
-                <div class="field">
                     <label for="itemStatus">Статус товара</label>
                     <select id="itemStatus">
                         <option value="available">✅ В наличии</option>
                         <option value="rented">🚚 В прокате</option>
                         <option value="soon">⭐ Скоро</option>
                     </select>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label for="itemDescription">Описание товара</label>
+                    <textarea id="itemDescription" placeholder="Краткое описание товара (до 300 символов)"></textarea>
                 </div>
                 <div class="field hidden" id="rentedWrap">
                     <label>Период аренды</label>
@@ -194,6 +225,10 @@
                     <option value="rented">В прокате</option>
                     <option value="soon">Скоро</option>
                 </select>
+            </div>
+            <div class="field">
+                <label>Описание</label>
+                <textarea id="editDescription" placeholder="Краткое описание товара"></textarea>
             </div>
             <div class="field" id="editRentWrap">
                 <label>Период аренды</label>

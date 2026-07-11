@@ -13,7 +13,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   
   <style>
-    /* Все ваши стили остаются без изменений */
     :root{
       --bg:#fbfbfa;
       --card:#ffffff;
@@ -138,6 +137,8 @@
       box-shadow:var(--shadow);
       transition:transform .2s ease, box-shadow .2s ease;
       position:relative;
+      display:flex;
+      flex-direction:column;
     }
 
     .card:hover{
@@ -147,11 +148,10 @@
 
     .card__media{
       position:relative;
-      aspect-ratio:1/1.1;
-      margin:12px 12px 0;
+      aspect-ratio:1/1;
       overflow:hidden;
-      border-radius:12px;
       background:#f3f5f7;
+      flex-shrink:0;
     }
 
     .card__media img,
@@ -160,6 +160,13 @@
       height:100%;
       object-fit:cover;
       display:block;
+    }
+
+    /* Заглушка для ошибок загрузки изображений */
+    .card__media img.error {
+      object-fit:contain;
+      padding:20px;
+      background:#f3f5f7;
     }
 
     .badge{
@@ -181,6 +188,9 @@
 
     .card__body{
       padding:14px 14px 16px;
+      flex:1;
+      display:flex;
+      flex-direction:column;
     }
 
     .card__title{
@@ -189,7 +199,18 @@
       line-height:1.35;
       color:var(--title);
       font-weight:700;
-      min-height:44px;
+    }
+
+    .card__description{
+      font-size:14px;
+      color:#666;
+      line-height:1.5;
+      margin:4px 0 8px;
+      flex:1;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
     }
 
     .card__rent-dates{
@@ -287,7 +308,7 @@
       }
 
       .card__media{
-        aspect-ratio:1/0.95;
+        aspect-ratio:1/1;
       }
 
       .footer__phone{
@@ -336,16 +357,15 @@
     (function() {
       "use strict";
 
-			const firebaseConfig = {
-		apiKey: "AIzaSyCGVN_aD4WL-3eTX8GM2vPgGsFhwcd3ZX4",
-		authDomain: "igrushki-6a93c.firebaseapp.com",
-		projectId: "igrushki-6a93c",
-		storageBucket: "igrushki-6a93c.firebasestorage.app",
-		messagingSenderId: "1085039924771",
-		appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
-		};
+      const firebaseConfig = {
+        apiKey: "AIzaSyCGVN_aD4WL-3eTX8GM2vPgGsFhwcd3ZX4",
+        authDomain: "igrushki-6a93c.firebaseapp.com",
+        projectId: "igrushki-6a93c",
+        storageBucket: "igrushki-6a93c.firebasestorage.app",
+        messagingSenderId: "1085039924771",
+        appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
+      };
 
-      // Инициализация Firebase
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
 
@@ -380,12 +400,25 @@
         return "дней";
       }
 
+      function truncateText(text, maxLength) {
+        if (!text) return "";
+        if (text.length <= maxLength) return text;
+        return text.slice(0, maxLength) + "...";
+      }
+
       function createCard(item) {
         let mediaHtml = "";
         if (item.mediaType === "video") {
           mediaHtml = `<video src="${item.media}" controls preload="metadata"></video>`;
         } else {
-          mediaHtml = `<img src="${item.media}" alt="${item.name}" loading="lazy">`;
+          mediaHtml = `
+            <img 
+              src="${item.media}" 
+              alt="${item.name}" 
+              loading="lazy"
+              onerror="this.classList.add('error'); this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23f3f5f7%22 width=%22200%22 height=%22200%22/%3E%3Ctext x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%23999%22%3E📷%3C/text%3E%3C/svg%3E'"
+            >
+          `;
         }
 
         let rentHtml = "";
@@ -403,6 +436,10 @@
           }
         }
 
+        const descriptionHtml = item.description 
+          ? `<div class="card__description">${truncateText(item.description, 120)}</div>`
+          : "";
+
         return `
           <article class="card">
             <div class="card__media">
@@ -411,6 +448,7 @@
             </div>
             <div class="card__body">
               <h2 class="card__title">${item.name}</h2>
+              ${descriptionHtml}
               ${rentHtml}
             </div>
           </article>
@@ -430,7 +468,6 @@
         catalogContainer.innerHTML = items.map(createCard).join("");
       }
 
-      // Загрузка данных из Firebase
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         
@@ -453,7 +490,6 @@
           });
       }
 
-      // Загружаем каталог при старте
       loadCatalog();
     })();
   </script>

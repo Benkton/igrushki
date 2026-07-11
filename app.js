@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 4.0 (облачная синхронизация)
+    Версия 5.0 (с описанием товаров)
 =========================================================*/
 
 "use strict";
@@ -15,7 +15,6 @@ const firebaseConfig = {
   appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
 };
 
-// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
@@ -45,39 +44,41 @@ const $ = id => document.getElementById(id);
 =========================================================*/
 
 const ui = {
-    login        : $("loginSection"),
-    admin        : $("adminSection"),
-    loginBtn     : $("loginBtn"),
-    logoutBtn    : $("logoutBtn"),
-    loginInput   : $("loginInput"),
-    passwordInput: $("passwordInput"),
-    form         : $("addForm"),
-    fileInput    : $("mediaFile"),
-    chooseBtn    : $("chooseFile"),
-    uploadArea   : $("uploadArea"),
-    preview      : $("previewMedia"),
-    previewBox   : $("previewBox"),
-    search       : $("searchInput"),
-    filter       : $("filterStatus"),
-    sort         : $("sortItems"),
-    list         : $("adminList"),
-    toast        : $("toast"),
-    total        : $("totalItems"),
-    available    : $("availableItems"),
-    rented       : $("rentedItems"),
-    soon         : $("soonItems"),
-    count        : $("catalogCount"),
-    editModal    : $("editModal"),
-    editForm     : $("editForm"),
-    editName     : $("editName"),
-    editStatus   : $("editStatus"),
-    editFile     : $("editFile"),
-    editRentStart: $("editRentStart"),
-    editRentEnd  : $("editRentEnd"),
-    closeEdit    : $("closeEdit"),
-    rentStart    : $("rentStart"),
-    rentEnd      : $("rentEnd"),
-    rentedWrap   : $("rentedWrap")
+    login         : $("loginSection"),
+    admin         : $("adminSection"),
+    loginBtn      : $("loginBtn"),
+    logoutBtn     : $("logoutBtn"),
+    loginInput    : $("loginInput"),
+    passwordInput : $("passwordInput"),
+    form          : $("addForm"),
+    fileInput     : $("mediaFile"),
+    chooseBtn     : $("chooseFile"),
+    uploadArea    : $("uploadArea"),
+    preview       : $("previewMedia"),
+    previewBox    : $("previewBox"),
+    search        : $("searchInput"),
+    filter        : $("filterStatus"),
+    sort          : $("sortItems"),
+    list          : $("adminList"),
+    toast         : $("toast"),
+    total         : $("totalItems"),
+    available     : $("availableItems"),
+    rented        : $("rentedItems"),
+    soon          : $("soonItems"),
+    count         : $("catalogCount"),
+    editModal     : $("editModal"),
+    editForm      : $("editForm"),
+    editName      : $("editName"),
+    editStatus    : $("editStatus"),
+    editDescription: $("editDescription"),
+    editFile      : $("editFile"),
+    editRentStart : $("editRentStart"),
+    editRentEnd   : $("editRentEnd"),
+    closeEdit     : $("closeEdit"),
+    rentStart     : $("rentStart"),
+    rentEnd       : $("rentEnd"),
+    rentedWrap    : $("rentedWrap"),
+    itemDescription: $("itemDescription")
 };
 
 /*=========================================================
@@ -112,7 +113,7 @@ async function login() {
     const password = ui.passwordInput.value.trim();
 
     if (!email || !password) {
-        toast("Введите логин и пароль");
+        toast("Введите email и пароль");
         return;
     }
 
@@ -126,7 +127,7 @@ async function login() {
         loadCatalog();
     } catch (error) {
         console.error("Ошибка входа:", error);
-        toast("Неверный логин или пароль");
+        toast("Неверный email или пароль");
         ui.passwordInput.value = "";
     }
 }
@@ -144,7 +145,6 @@ async function logout() {
     }
 }
 
-// Проверяем состояние авторизации при загрузке
 auth.onAuthStateChanged((user) => {
     if (user) {
         localStorage.setItem(LOGIN_KEY, "1");
@@ -161,7 +161,9 @@ auth.onAuthStateChanged((user) => {
     HELPERS
 =========================================================*/
 
-const createId = () => Date.now() + Math.floor(Math.random() * 1000000);
+function createId() {
+    return Date.now() + Math.floor(Math.random() * 1000000);
+}
 
 const statusName = {
     available: "В наличии",
@@ -199,6 +201,12 @@ function getDaysWord(days) {
     if (lastDigit === 1) return "день";
     if (lastDigit >= 2 && lastDigit <= 4) return "дня";
     return "дней";
+}
+
+function truncateText(text, maxLength) {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + "...";
 }
 
 /*=========================================================
@@ -301,7 +309,6 @@ ui.uploadArea.addEventListener("drop", e => {
     CRUD OPERATIONS (Firebase)
 =========================================================*/
 
-// Загрузка каталога из Firebase
 function loadCatalog() {
     db.collection("catalog")
       .orderBy("createdAt", "desc")
@@ -318,7 +325,6 @@ function loadCatalog() {
       });
 }
 
-// Добавление товара
 async function addItem(e) {
     e.preventDefault();
     const name = $("itemName").value.trim();
@@ -332,6 +338,7 @@ async function addItem(e) {
     }
 
     const status = $("itemStatus").value;
+    const description = ui.itemDescription.value.trim();
     const rentStart = ui.rentStart.value;
     const rentEnd = ui.rentEnd.value;
 
@@ -350,6 +357,7 @@ async function addItem(e) {
 
     const newItem = {
         name: name,
+        description: description || "",
         status: status,
         rentStart: status === "rented" ? rentStart : "",
         rentEnd: status === "rented" ? rentEnd : "",
@@ -363,6 +371,7 @@ async function addItem(e) {
         ui.form.reset();
         clearPreview();
         ui.rentedWrap.classList.add("hidden");
+        ui.itemDescription.value = "";
         toast("Товар добавлен");
     } catch (error) {
         console.error("Ошибка добавления:", error);
@@ -372,7 +381,6 @@ async function addItem(e) {
 
 ui.form.addEventListener("submit", addItem);
 
-// Удаление товара
 async function deleteItem(id) {
     const item = getItem(id);
     if (!item) return;
@@ -387,7 +395,6 @@ async function deleteItem(id) {
     }
 }
 
-// Обновление товара
 async function updateItem(id, data) {
     const item = getItem(id);
     if (!item) return;
@@ -401,7 +408,6 @@ async function updateItem(id, data) {
     }
 }
 
-// Копирование товара
 async function copyItem(id) {
     const item = getItem(id);
     if (!item) return;
@@ -434,7 +440,10 @@ function getVisibleItems() {
 
     const searchText = ui.search.value.trim().toLowerCase();
     if (searchText) {
-        arr = arr.filter(item => item.name.toLowerCase().includes(searchText));
+        arr = arr.filter(item => 
+            item.name.toLowerCase().includes(searchText) ||
+            (item.description && item.description.toLowerCase().includes(searchText))
+        );
     }
 
     const filterVal = ui.filter.value;
@@ -484,11 +493,16 @@ function createCard(item) {
         `;
     }
 
+    const descriptionHtml = item.description 
+        ? `<div class="admin-card__description">${truncateText(item.description, 100)}</div>`
+        : "";
+
     return `
         <div class="admin-card">
             ${mediaHtml}
             <div class="admin-card__body">
                 <h3 class="admin-card__title">${item.name}</h3>
+                ${descriptionHtml}
                 <p class="${statusClass[item.status]}">${statusName[item.status]}</p>
                 ${rentInfo}
                 <div class="admin-actions" style="margin-top: 12px;">
@@ -564,6 +578,7 @@ function openEditor(id) {
     editId = id;
     ui.editName.value = item.name;
     ui.editStatus.value = item.status;
+    ui.editDescription.value = item.description || "";
     ui.editRentStart.value = item.rentStart || "";
     ui.editRentEnd.value = item.rentEnd || "";
     ui.editFile.value = "";
@@ -596,6 +611,7 @@ ui.editForm.addEventListener("submit", async e => {
 
     const data = {
         name: ui.editName.value.trim(),
+        description: ui.editDescription.value.trim() || "",
         status: ui.editStatus.value
     };
 
@@ -652,7 +668,6 @@ ui.logoutBtn.onclick = logout;
     INITIALIZATION
 =========================================================*/
 
-// Проверяем, авторизован ли пользователь
 auth.onAuthStateChanged((user) => {
     if (user) {
         localStorage.setItem(LOGIN_KEY, "1");
@@ -665,7 +680,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Если уже авторизован, загружаем каталог
 if (isLogged()) {
     loadCatalog();
 }
