@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель | Прокат игрушек Астрахань</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="admin">
+
+<header class="header">
+    <div class="header__inner wrap">
+        <div class="logo">
+            <h1>Прокат игрушек и товаров для детей</h1>
+            <span class="logo-subtitle">Панель администратора</span>
+        </div>
+        <div class="header__actions">
+            <a href="index.html" class="vk-link">← Вернуться на сайт</a>
+        </div>
+    </div>
+</header>
+
+<main class="wrap main">
+    <section class="hero">
+        <h2 class="hero__title">Добро пожаловать в админ-панель</h2>
+        <p class="hero__text">
+            Здесь можно управлять каталогом, добавлять новые товары,
+            изменять фотографии, загружать видео, менять статус проката
+            и контролировать весь ассортимент.
+        </p>
+    </section>
+
+    <section class="dashboard">
+        <div class="dashboard-card">
+            <div class="dashboard-icon">📦</div>
+            <div class="dashboard-info">
+                <span class="dashboard-value" id="totalItems">0</span>
+                <span class="dashboard-label">Всего товаров</span>
+            </div>
+        </div>
+        <div class="dashboard-card available">
+            <div class="dashboard-icon">✅</div>
+            <div class="dashboard-info">
+                <span class="dashboard-value" id="availableItems">0</span>
+                <span class="dashboard-label">В наличии</span>
+            </div>
+        </div>
+        <div class="dashboard-card rented">
+            <div class="dashboard-icon">🚚</div>
+            <div class="dashboard-info">
+                <span class="dashboard-value" id="rentedItems">0</span>
+                <span class="dashboard-label">В прокате</span>
+            </div>
+        </div>
+        <div class="dashboard-card soon">
+            <div class="dashboard-icon">⭐</div>
+            <div class="dashboard-info">
+                <span class="dashboard-value" id="soonItems">0</span>
+                <span class="dashboard-label">Скоро</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="loginSection" class="panel login-panel">
+        <h2>Авторизация</h2>
+        <div class="field">
+            <label for="loginInput">Логин</label>
+            <input id="loginInput" type="text" placeholder="Введите логин">
+        </div>
+        <div class="field">
+            <label for="passwordInput">Пароль</label>
+            <input id="passwordInput" type="password" placeholder="Введите пароль">
+        </div>
+        <div class="row">
+            <button id="loginBtn" class="btn btn--primary" type="button">Войти</button>
+        </div>
+        <!-- Подсказка с логином и паролем удалена -->
+    </section>
+
+    <section id="adminSection" class="panel hidden">
+        <div class="admin-header">
+            <div>
+                <h2>Управление каталогом</h2>
+                <p class="hero__text">
+                    Добавляйте новые товары, изменяйте фотографии,
+                    загружайте видео, управляйте статусом и редактируйте каталог.
+                </p>
+            </div>
+            <button id="logoutBtn" class="btn">Выйти</button>
+        </div>
+
+        <div class="toolbar">
+            <input id="searchInput" type="text" placeholder="🔍 Поиск товара...">
+            <select id="filterStatus">
+                <option value="all">Все статусы</option>
+                <option value="available">В наличии</option>
+                <option value="rented">В прокате</option>
+                <option value="soon">Скоро</option>
+            </select>
+            <select id="sortItems">
+                <option value="new">Сначала новые</option>
+                <option value="old">Сначала старые</option>
+                <option value="name">По названию</option>
+                <option value="rentEnd">По дате возврата</option>
+            </select>
+        </div>
+
+        <form id="addForm" class="admin-form">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="itemName">Название товара</label>
+                    <input id="itemName" type="text" placeholder="Например: LEGO Duplo" required>
+                </div>
+                <div class="field">
+                    <label for="mediaType">Тип медиа</label>
+                    <select id="mediaType">
+                        <option value="image">📷 Изображение</option>
+                        <option value="video">🎥 Видео</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="itemStatus">Статус товара</label>
+                    <select id="itemStatus">
+                        <option value="available">✅ В наличии</option>
+                        <option value="rented">🚚 В прокате</option>
+                        <option value="soon">⭐ Скоро</option>
+                    </select>
+                </div>
+                <div class="field hidden" id="rentedWrap">
+                    <label>Период аренды</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="font-weight: 400; font-size: 13px;">С</label>
+                            <input id="rentStart" type="date">
+                        </div>
+                        <div>
+                            <label style="font-weight: 400; font-size: 13px;">По</label>
+                            <input id="rentEnd" type="date">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <input id="mediaFile" type="file" accept="image/*,video/*" hidden>
+                <div class="upload-icon">📁</div>
+                <h3>Перетащите файл сюда</h3>
+                <p>или нажмите, чтобы выбрать изображение либо видео</p>
+                <button type="button" class="btn" id="chooseFile">Выбрать файл</button>
+            </div>
+
+            <div class="preview-box hidden" id="previewBox">
+                <h3>Предпросмотр</h3>
+                <div id="previewMedia"></div>
+            </div>
+
+            <div class="progress hidden">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="row">
+                <button type="submit" class="btn btn--primary">➕ Добавить товар</button>
+            </div>
+        </form>
+
+        <section class="catalog-admin">
+            <div class="catalog-admin__header">
+                <h2>Каталог товаров</h2>
+                <span id="catalogCount">0 товаров</span>
+            </div>
+            <div id="adminList" class="admin-grid"></div>
+        </section>
+    </section>
+</main>
+
+<!-- Модальное окно редактирования -->
+<div id="editModal" class="modal" aria-hidden="true">
+    <div class="modal__box">
+        <button class="modal__close" id="closeEdit">×</button>
+        <h2>Редактирование товара</h2>
+        <form id="editForm">
+            <div class="field">
+                <label>Название</label>
+                <input id="editName" type="text">
+            </div>
+            <div class="field">
+                <label>Статус</label>
+                <select id="editStatus">
+                    <option value="available">В наличии</option>
+                    <option value="rented">В прокате</option>
+                    <option value="soon">Скоро</option>
+                </select>
+            </div>
+            <div class="field" id="editRentWrap">
+                <label>Период аренды</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-weight: 400; font-size: 13px;">С</label>
+                        <input id="editRentStart" type="date">
+                    </div>
+                    <div>
+                        <label style="font-weight: 400; font-size: 13px;">По</label>
+                        <input id="editRentEnd" type="date">
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <label>Заменить файл</label>
+                <input id="editFile" type="file" accept="image/*,video/*">
+            </div>
+            <div class="row">
+                <button class="btn btn--primary" type="submit">💾 Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast" class="toast">Готово</div>
+
+<footer class="footer">
+    <div class="footer__inner wrap">
+        <div class="footer__line">📦 Управление каталогом</div>
+        <div class="footer__line">⚡ Новая версия панели управления</div>
+        <div class="footer__line">❤️ Сделано с использованием HTML, CSS и JavaScript</div>
+    </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

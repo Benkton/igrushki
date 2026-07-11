@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Прокат игрушек и товаров для детей ▏Астрахань</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#fbfbfa;
+      --card:#ffffff;
+      --accent:#F9D342;
+      --accent2:#FF8C42;
+      --green:#2ECC71;
+      --red:#E74C3C;
+      --gray:#95A5A6;
+      --title:#2C3E50;
+      --text:#4A4A4A;
+      --shadow:0 8px 24px rgba(44,62,80,.08);
+      --shadowHover:0 14px 30px rgba(44,62,80,.14);
+      --radius:16px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      padding:0;
+      background:linear-gradient(180deg,#fff, var(--bg));
+      color:var(--text);
+      font-family:'Inter',sans-serif;
+    }
+
+    a{text-decoration:none;color:inherit}
+
+    .header{
+      width:100%;
+      background:#fff;
+      box-shadow:0 2px 16px rgba(0,0,0,.06);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+
+    .header__inner{
+      max-width:1280px;
+      margin:0 auto;
+      padding:18px 20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+    }
+
+    h1{
+      margin:0;
+      font-family:'Nunito',sans-serif;
+      font-size:36px;
+      line-height:1.1;
+      color:var(--title);
+      letter-spacing:-.02em;
+      font-weight:800;
+    }
+
+    .vk-link{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 16px;
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#fff;
+      font-weight:700;
+      box-shadow:0 8px 20px rgba(255,140,66,.25);
+      transition:.2s ease;
+      white-space:nowrap;
+    }
+
+    .vk-link:hover{
+      transform:translateY(-1px);
+      box-shadow:0 12px 24px rgba(255,140,66,.3);
+    }
+
+    .vk-icon{
+      width:18px;
+      height:18px;
+      display:inline-block;
+      border-radius:5px;
+      background:rgba(255,255,255,.22);
+    }
+
+    .wrap{
+      max-width:1280px;
+      margin:0 auto;
+      padding:24px 20px 40px;
+    }
+
+    .hero{
+      margin-bottom:18px;
+      padding:20px;
+      background:linear-gradient(135deg, rgba(249,211,66,.16), rgba(255,140,66,.10));
+      border-radius:20px;
+      border:1px solid rgba(44,62,80,.06);
+    }
+
+    .hero__title{
+      margin:0 0 8px;
+      font-family:'Nunito',sans-serif;
+      font-size:24px;
+      color:var(--title);
+      font-weight:800;
+    }
+
+    .hero__text{
+      margin:0;
+      color:var(--text);
+      line-height:1.6;
+      max-width:720px;
+    }
+
+    .catalog{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:20px;
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:var(--shadow);
+      transition:transform .2s ease, box-shadow .2s ease;
+      position:relative;
+    }
+
+    .card:hover{
+      transform:scale(1.02);
+      box-shadow:var(--shadowHover);
+    }
+
+    .card__media{
+      position:relative;
+      aspect-ratio:1/1.1;
+      margin:12px 12px 0;
+      overflow:hidden;
+      border-radius:12px;
+      background:#f3f5f7;
+    }
+
+    .card__media img,
+    .card__media video{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .badge{
+      position:absolute;
+      top:12px;
+      right:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      color:#fff;
+      z-index:2;
+      backdrop-filter:blur(4px);
+    }
+
+    .badge--available{background:var(--green)}
+    .badge--rented{background:var(--red)}
+    .badge--soon{background:var(--gray)}
+
+    .card__body{
+      padding:14px 14px 16px;
+    }
+
+    .card__title{
+      margin:0 0 6px;
+      font-size:16px;
+      line-height:1.35;
+      color:var(--title);
+      font-weight:700;
+      min-height:44px;
+    }
+
+    .card__rent-dates{
+      font-size:13px;
+      color:#555;
+      margin-top:6px;
+      padding:6px 10px;
+      background:#f8f6f0;
+      border-radius:8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .card__rent-dates .days{
+      font-weight:700;
+      color:var(--accent2);
+    }
+
+    .card__date{
+      font-size:12px;
+      color:#7a7a7a;
+      margin-top:4px;
+    }
+
+    .empty-catalog{
+      grid-column:1/-1;
+      text-align:center;
+      padding:60px 20px;
+      color:#888;
+    }
+
+    .empty-catalog h3{
+      color:var(--title);
+      margin-bottom:10px;
+    }
+
+    .footer{
+      background:#2C3E50;
+      color:#fff;
+      margin-top:12px;
+    }
+
+    .footer__inner{
+      max-width:1280px;
+      margin:0 auto;
+      padding:26px 20px;
+      display:grid;
+      gap:10px;
+    }
+
+    .footer__line{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:15px;
+      opacity:.98;
+    }
+
+    .footer__contacts{
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .footer__phone{
+      font-size:22px;
+      font-weight:800;
+      color:#fff;
+    }
+
+    @media (max-width:1100px){
+      .catalog{grid-template-columns:repeat(2,1fr)}
+      h1{font-size:30px}
+    }
+
+    @media (max-width:720px){
+      .header__inner{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+
+      h1{
+        font-size:24px;
+      }
+
+      .catalog{
+        grid-template-columns:1fr;
+      }
+
+      .wrap{
+        padding:18px 14px 30px;
+      }
+
+      .card__media{
+        aspect-ratio:1/0.95;
+      }
+
+      .footer__phone{
+        font-size:20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header__inner">
+      <h1>Прокат игрушек и товаров для детей ▏Астрахань</h1>
+      <a class="vk-link" href="https://vk.com/club84975215" target="_blank" rel="noopener noreferrer">
+        <span class="vk-icon"></span>
+        Группа в VK
+      </a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h2 class="hero__title">Уютный прокат игрушек и товаров для детей</h2>
+      <p class="hero__text">
+        Здесь можно быстро посмотреть наличие, статус и занятость товаров. Без корзины, покупок и лишних кнопок — только удобная витрина для родителей.
+      </p>
+    </section>
+
+    <section class="catalog" id="catalogContainer">
+      <!-- Карточки будут вставлены динамически через JavaScript -->
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__line">🌏 Брендовые игрушки из Европы, Америки</div>
+      <div class="footer__line">📦 ДОСТАВКА от 100₽</div>
+      <div class="footer__line">✨ Работаем для Вас 24/7, кроме субботы</div>
+      <div class="footer__contacts">
+        <div>Контакты</div>
+        <a class="footer__phone" href="tel:+79275524100">8-927-552-41-00</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      "use strict";
+
+      const STORAGE_KEY = "toy_catalog";
+      const catalogContainer = document.getElementById("catalogContainer");
+
+      const statusName = {
+        available: "В наличии",
+        rented: "В прокате",
+        soon: "Скоро"
+      };
+      const statusBadgeClass = {
+        available: "badge--available",
+        rented: "badge--rented",
+        soon: "badge--soon"
+      };
+
+      function loadCatalog() {
+        try {
+          const data = localStorage.getItem(STORAGE_KEY);
+          return data ? JSON.parse(data) : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return "";
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+          return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return dateStr;
+      }
+
+      function getDaysWord(days) {
+        const lastDigit = days % 10;
+        const lastTwo = days % 100;
+        if (lastTwo >= 11 && lastTwo <= 14) return "дней";
+        if (lastDigit === 1) return "день";
+        if (lastDigit >= 2 && lastDigit <= 4) return "дня";
+        return "дней";
+      }
+
+      function createCard(item) {
+        let mediaHtml = "";
+        if (item.mediaType === "video") {
+          mediaHtml = `<video src="${item.media}" controls preload="metadata"></video>`;
+        } else {
+          mediaHtml = `<img src="${item.media}" alt="${item.name}" loading="lazy">`;
+        }
+
+        let rentHtml = "";
+        if (item.status === "rented" && item.rentStart && item.rentEnd) {
+          const start = new Date(item.rentStart);
+          const end = new Date(item.rentEnd);
+          const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+          if (days > 0) {
+            rentHtml = `
+              <div class="card__rent-dates">
+                <span>📅 ${formatDate(item.rentStart)} — ${formatDate(item.rentEnd)}</span>
+                <span class="days">${days} ${getDaysWord(days)}</span>
+              </div>
+            `;
+          }
+        }
+
+        return `
+          <article class="card">
+            <div class="card__media">
+              <span class="badge ${statusBadgeClass[item.status] || "badge--soon"}">${statusName[item.status] || item.status}</span>
+              ${mediaHtml}
+            </div>
+            <div class="card__body">
+              <h2 class="card__title">${item.name}</h2>
+              ${rentHtml}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderCatalog() {
+        const items = loadCatalog();
+        if (!items.length) {
+          catalogContainer.innerHTML = `
+            <div class="empty-catalog">
+              <h3>Каталог пуст</h3>
+              <p>Загляните позже — мы постоянно обновляем ассортимент.</p>
+            </div>
+          `;
+          return;
+        }
+        catalogContainer.innerHTML = items.map(createCard).join("");
+      }
+
+      window.addEventListener("storage", (e) => {
+        if (e.key === STORAGE_KEY) {
+          renderCatalog();
+        }
+      });
+
+      renderCatalog();
+    })();
+  </script>
+</body>
+</html>
