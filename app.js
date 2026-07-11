@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 5.0 (с описанием товаров)
+    Версия 5.1 (исправлены CRUD операции)
 =========================================================*/
 
 "use strict";
@@ -31,7 +31,7 @@ const LOGIN_KEY = "toy_admin";
 
 let catalog = [];
 let selectedFile = null;
-let editId = null;
+let editId = null; // Хранит firebaseId товара для редактирования
 
 /*=========================================================
     SHORTCUT
@@ -161,7 +161,7 @@ auth.onAuthStateChanged((user) => {
     HELPERS
 =========================================================*/
 
-function createId() {
+function generateId() {
     return Date.now() + Math.floor(Math.random() * 1000000);
 }
 
@@ -315,7 +315,11 @@ function loadCatalog() {
       .onSnapshot((snapshot) => {
           catalog = [];
           snapshot.forEach((doc) => {
-              catalog.push({ firebaseId: doc.id, ...doc.data() });
+              catalog.push({ 
+                  firebaseId: doc.id, 
+                  id: generateId(), // Уникальный ID для локального использования
+                  ...doc.data() 
+              });
           });
           render();
           updateStats();
@@ -381,13 +385,14 @@ async function addItem(e) {
 
 ui.form.addEventListener("submit", addItem);
 
-async function deleteItem(id) {
-    const item = getItem(id);
+// Удаление товара по firebaseId
+async function deleteItem(firebaseId) {
+    const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
     if (!confirm(`Удалить "${item.name}"?`)) return;
     
     try {
-        await db.collection("catalog").doc(item.firebaseId).delete();
+        await db.collection("catalog").doc(firebaseId).delete();
         toast("Товар удалён");
     } catch (error) {
         console.error("Ошибка удаления:", error);
@@ -395,12 +400,10 @@ async function deleteItem(id) {
     }
 }
 
-async function updateItem(id, data) {
-    const item = getItem(id);
-    if (!item) return;
-    
+// Обновление товара по firebaseId
+async function updateItem(firebaseId, data) {
     try {
-        await db.collection("catalog").doc(item.firebaseId).update(data);
+        await db.collection("catalog").doc(firebaseId).update(data);
         toast("Изменения сохранены");
     } catch (error) {
         console.error("Ошибка обновления:", error);
@@ -408,15 +411,21 @@ async function updateItem(id, data) {
     }
 }
 
-async function copyItem(id) {
-    const item = getItem(id);
+// Копирование товара по firebaseId
+async function copyItem(firebaseId) {
+    const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
     
-    const copy = { ...item };
-    delete copy.firebaseId;
-    delete copy.id;
-    copy.name = item.name + " (копия)";
-    copy.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    const copy = { 
+        name: item.name + " (копия)",
+        description: item.description || "",
+        status: item.status,
+        rentStart: item.rentStart || "",
+        rentEnd: item.rentEnd || "",
+        media: item.media,
+        mediaType: item.mediaType || "image",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
     
     try {
         await db.collection("catalog").add(copy);
@@ -431,8 +440,8 @@ async function copyItem(id) {
     FILTERING & SORTING
 =========================================================*/
 
-function getItem(id) {
-    return catalog.find(item => item.id === id);
+function getItemByFirebaseId(firebaseId) {
+    return catalog.find(item => item.firebaseId === firebaseId);
 }
 
 function getVisibleItems() {
@@ -451,6 +460,7 @@ function getVisibleItems() {
         arr = arr.filter(item => item.status === filterVal);
     }
 
+    // Сортируем по локальному ID (числовому)
     switch (ui.sort.value) {
         case "name":
             arr.sort((a, b) => a.name.localeCompare(b.name));
@@ -506,9 +516,9 @@ function createCard(item) {
                 <p class="${statusClass[item.status]}">${statusName[item.status]}</p>
                 ${rentInfo}
                 <div class="admin-actions" style="margin-top: 12px;">
-                    <button class="editBtn" data-id="${item.id}">✏️ Редактировать</button>
-                    <button class="copyBtn" data-id="${item.id}">📄 Копировать</button>
-                    <button class="deleteBtn" data-id="${item.id}">🗑 Удалить</button>
+                    <button class="editBtn" data-firebase-id="${item.firebaseId}">✏️ Редактировать</button>
+                    <button class="copyBtn" data-firebase-id="${item.firebaseId}">📄 Копировать</button>
+                    <button class="deleteBtn" data-firebase-id="${item.firebaseId}">🗑 Удалить</button>
                 </div>
             </div>
         </div>
@@ -544,18 +554,18 @@ function updateStats() {
 ui.list.addEventListener("click", e => {
     const button = e.target.closest("button");
     if (!button) return;
-    const id = Number(button.dataset.id);
+    const firebaseId = button.dataset.firebaseId;
 
     if (button.classList.contains("editBtn")) {
-        openEditor(id);
+        openEditor(firebaseId);
         return;
     }
     if (button.classList.contains("copyBtn")) {
-        copyItem(id);
+        copyItem(firebaseId);
         return;
     }
     if (button.classList.contains("deleteBtn")) {
-        deleteItem(id);
+        deleteItem(firebaseId);
         return;
     }
 });
@@ -572,10 +582,12 @@ ui.sort.addEventListener("change", render);
     EDITOR
 =========================================================*/
 
-function openEditor(id) {
-    const item = getItem(id);
+function openEditor(firebaseId) {
+    const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
-    editId = id;
+    
+    editId = firebaseId; // Сохраняем firebaseId для редактирования
+    
     ui.editName.value = item.name;
     ui.editStatus.value = item.status;
     ui.editDescription.value = item.description || "";
@@ -606,8 +618,10 @@ ui.editModal.addEventListener("click", e => {
 
 ui.editForm.addEventListener("submit", async e => {
     e.preventDefault();
-    const item = getItem(editId);
-    if (!item) return;
+    if (!editId) {
+        toast("Ошибка: товар не выбран");
+        return;
+    }
 
     const data = {
         name: ui.editName.value.trim(),
