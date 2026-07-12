@@ -220,12 +220,6 @@
       font-size: 14px;
     }
 
-    .card__rent-period {
-      font-size: 13px;
-      color: #555;
-      margin-top: 4px;
-    }
-
     .empty-catalog {
       grid-column: 1 / -1;
       text-align: center;
@@ -280,23 +274,6 @@
       color: #fff;
     }
 
-    .rent-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 700;
-      margin: 2px 2px 2px 0;
-    }
-    .rent-badge.week {
-      background: #e8f0fe;
-      color: #1a73e8;
-    }
-    .rent-badge.month {
-      background: #fef3e8;
-      color: #e37400;
-    }
-
     @media (max-width: 1100px) {
       .catalog { grid-template-columns: repeat(2, 1fr); }
       h1 { font-size: 30px; }
@@ -331,7 +308,7 @@
     <section class="hero">
       <h2 class="hero__title">Уютный прокат игрушек и товаров для детей</h2>
       <p class="hero__text">
-        Здесь можно быстро посмотреть наличие, статус и занятость товаров. Без корзины, покупок и лишних кнопок — только удобная витрина для родителей.
+        Здесь можно быстро посмотреть наличие, статус и стоимость аренды. Без корзины, покупок и лишних кнопок — только удобная витрина для родителей.
       </p>
     </section>
 
@@ -403,32 +380,16 @@
           `;
         }
 
-        let rentHtml = "";
-        if (item.status === "rented") {
-          const price14 = item.rentPrice14 || 0;
-          const price30 = item.rentPrice30 || 0;
-          
-          let priceHtml = "";
-          if (price14 > 0 || price30 > 0) {
-            priceHtml = `<div class="card__price">`;
-            if (price14 > 0) priceHtml += `2 недели: ${price14}₽ `;
-            if (price30 > 0) priceHtml += `1 месяц: ${price30}₽`;
-            priceHtml += `</div>`;
-          }
-
-          let periodHtml = "";
-          let badges = "";
-          if (price14 > 0) badges += `<span class="rent-badge week">14 дней</span> `;
-          if (price30 > 0) badges += `<span class="rent-badge month">30 дней</span>`;
-          
-          if (badges) {
-            periodHtml = `<div class="card__rent-period">Доступно: ${badges}</div>`;
-          }
-
-          rentHtml = `
-            ${periodHtml}
-            ${priceHtml}
-          `;
+        // Цены отображаются всегда, независимо от статуса
+        const price14 = item.rentPrice14 || 0;
+        const price30 = item.rentPrice30 || 0;
+        
+        let priceHtml = "";
+        if (price14 > 0 || price30 > 0) {
+          priceHtml = `<div class="card__price">`;
+          if (price14 > 0) priceHtml += `2 недели: ${price14}₽ `;
+          if (price30 > 0) priceHtml += `1 месяц: ${price30}₽`;
+          priceHtml += `</div>`;
         }
 
         const descriptionHtml = item.description 
@@ -444,7 +405,7 @@
             <div class="card__body">
               <h2 class="card__title">${item.name}</h2>
               ${descriptionHtml}
-              ${rentHtml}
+              ${priceHtml}
             </div>
           </article>
         `;

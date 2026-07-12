@@ -79,6 +79,11 @@
             font-size: 15px;
             font-weight: 600;
         }
+        .rent-option .price-input input:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 4px rgba(255,140,66,.12);
+        }
         .rent-option .price-input span {
             font-weight: 700;
             color: var(--title);
@@ -88,12 +93,6 @@
             font-size: 12px;
             color: #888;
             font-weight: 400;
-        }
-        .rent-options-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--title);
-            margin-bottom: 8px;
         }
         .admin-card__price {
             font-size: 18px;
@@ -136,6 +135,11 @@
         .rent-period-badge.month {
             background: #fef3e8;
             color: #e37400;
+        }
+        .price-hint {
+            font-size: 13px;
+            color: #888;
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -254,8 +258,8 @@
                     <label for="itemDescription">Описание товара</label>
                     <textarea id="itemDescription" placeholder="Краткое описание товара (до 300 символов)"></textarea>
                 </div>
-                <div class="field hidden" id="rentedWrap" style="grid-column: 1 / -1;">
-                    <label>Настройка аренды</label>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label>💰 Цены аренды</label>
                     <div class="rent-options">
                         <div class="rent-option">
                             <label>📅 2 недели (14 дней)</label>
@@ -272,9 +276,7 @@
                             </div>
                         </div>
                     </div>
-                    <div style="margin-top: 12px; font-size: 13px; color: #888;">
-                        ⚡ Выберите хотя бы один вариант аренды
-                    </div>
+                    <div class="price-hint">⚡ Укажите цены для обоих вариантов аренды</div>
                 </div>
             </div>
 
@@ -328,8 +330,8 @@
                 <label>Описание</label>
                 <textarea id="editDescription" placeholder="Краткое описание товара"></textarea>
             </div>
-            <div class="field" id="editRentWrap">
-                <label>Настройка аренды</label>
+            <div class="field">
+                <label>💰 Цены аренды</label>
                 <div class="edit-rent-options">
                     <div class="field">
                         <label>2 недели (14 дней)</label>
@@ -339,9 +341,6 @@
                         <label>1 месяц (30 дней)</label>
                         <input id="editRentPrice30" type="number" placeholder="Цена" min="0" step="50">
                     </div>
-                </div>
-                <div style="margin-top: 8px; font-size: 13px; color: #888;">
-                    ⚡ Укажите цену хотя бы для одного варианта
                 </div>
             </div>
             <div class="field">

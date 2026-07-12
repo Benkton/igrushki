@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 7.0 (только 2 недели и месяц, без ручных дат)
+    Версия 8.0 (цены всегда отображаются для всех статусов)
 =========================================================*/
 
 "use strict";
@@ -77,7 +77,6 @@ const ui = {
     closeEdit      : $("closeEdit"),
     rentPrice14    : $("rentPrice14"),
     rentPrice30    : $("rentPrice30"),
-    rentedWrap     : $("rentedWrap"),
     itemDescription: $("itemDescription"),
     itemStatus     : $("itemStatus")
 };
@@ -189,42 +188,6 @@ function formatPrice(price) {
     return price + " ₽";
 }
 
-function getRentPeriodLabel(price14, price30) {
-    let labels = [];
-    if (price14 > 0) labels.push('14 дней');
-    if (price30 > 0) labels.push('30 дней');
-    return labels.join(' / ');
-}
-
-/*=========================================================
-    TOGGLE RENT
-=========================================================*/
-
-function toggleRentFields(status) {
-    if (status === "rented") {
-        ui.rentedWrap.classList.remove("hidden");
-    } else {
-        ui.rentedWrap.classList.add("hidden");
-        ui.rentPrice14.value = "";
-        ui.rentPrice30.value = "";
-    }
-}
-
-ui.itemStatus.addEventListener("change", function() {
-    toggleRentFields(this.value);
-});
-
-ui.editStatus.addEventListener("change", function() {
-    const wrap = document.getElementById("editRentWrap");
-    if (this.value === "rented") {
-        wrap.classList.remove("hidden");
-    } else {
-        wrap.classList.add("hidden");
-        ui.editRentPrice14.value = "";
-        ui.editRentPrice30.value = "";
-    }
-});
-
 /*=========================================================
     FILE HANDLING
 =========================================================*/
@@ -333,19 +296,17 @@ async function addItem(e) {
     const price14 = parseInt(ui.rentPrice14.value) || 0;
     const price30 = parseInt(ui.rentPrice30.value) || 0;
 
-    if (status === "rented") {
-        if (price14 === 0 && price30 === 0) {
-            toast("Укажите цену хотя бы для одного варианта аренды (14 дней или 30 дней)");
-            return;
-        }
+    if (price14 === 0 && price30 === 0) {
+        toast("Укажите цену хотя бы для одного варианта аренды");
+        return;
     }
 
     const newItem = {
         name: name,
         description: description || "",
         status: status,
-        rentPrice14: status === "rented" ? price14 : 0,
-        rentPrice30: status === "rented" ? price30 : 0,
+        rentPrice14: price14,
+        rentPrice30: price30,
         media: await toBase64(selectedFile),
         mediaType: selectedFile.type.startsWith("video") ? "video" : "image",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -355,7 +316,6 @@ async function addItem(e) {
         await db.collection("catalog").add(newItem);
         ui.form.reset();
         clearPreview();
-        ui.rentedWrap.classList.add("hidden");
         ui.itemDescription.value = "";
         ui.rentPrice14.value = "";
         ui.rentPrice30.value = "";
@@ -463,38 +423,20 @@ function createCard(item) {
         ? `<video class="admin-card__media" src="${item.media}" controls preload="metadata"></video>`
         : `<img class="admin-card__media" src="${item.media}" alt="${item.name}" loading="lazy">`;
 
-    let rentInfo = "";
-    if (item.status === "rented") {
-        const price14 = item.rentPrice14 || 0;
-        const price30 = item.rentPrice30 || 0;
-        
-        let priceHtml = "";
-        if (price14 > 0 || price30 > 0) {
-            priceHtml = `<div class="admin-card__price">`;
-            if (price14 > 0) {
-                priceHtml += `2 недели: ${price14} ₽ `;
-            }
-            if (price30 > 0) {
-                priceHtml += `1 месяц: ${price30} ₽`;
-            }
-            priceHtml += `</div>`;
+    // Цены отображаются всегда, независимо от статуса
+    const price14 = item.rentPrice14 || 0;
+    const price30 = item.rentPrice30 || 0;
+    
+    let priceHtml = "";
+    if (price14 > 0 || price30 > 0) {
+        priceHtml = `<div class="admin-card__price">`;
+        if (price14 > 0) {
+            priceHtml += `2 недели: ${price14} ₽ `;
         }
-        
-        let periodHtml = "";
-        if (price14 > 0 && price30 > 0) {
-            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: 14 дней и 30 дней</div>`;
-        } else if (price14 > 0) {
-            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: только 14 дней</div>`;
-        } else if (price30 > 0) {
-            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: только 30 дней</div>`;
+        if (price30 > 0) {
+            priceHtml += `1 месяц: ${price30} ₽`;
         }
-        
-        rentInfo = `
-            <div style="margin-top: 8px; font-size: 13px; color: #555;">
-                ${periodHtml}
-                ${priceHtml}
-            </div>
-        `;
+        priceHtml += `</div>`;
     }
 
     const descriptionHtml = item.description 
@@ -508,7 +450,7 @@ function createCard(item) {
                 <h3 class="admin-card__title">${item.name}</h3>
                 ${descriptionHtml}
                 <p class="${statusClass[item.status]}">${statusName[item.status]}</p>
-                ${rentInfo}
+                ${priceHtml}
                 <div class="admin-actions" style="margin-top: 12px;">
                     <button class="editBtn" data-firebase-id="${item.firebaseId}">✏️ Редактировать</button>
                     <button class="copyBtn" data-firebase-id="${item.firebaseId}">📄 Копировать</button>
@@ -589,13 +531,6 @@ function openEditor(firebaseId) {
     ui.editRentPrice30.value = item.rentPrice30 || "";
     ui.editFile.value = "";
 
-    const wrap = document.getElementById("editRentWrap");
-    if (item.status === "rented") {
-        wrap.classList.remove("hidden");
-    } else {
-        wrap.classList.add("hidden");
-    }
-
     ui.editModal.classList.add("show");
 }
 
@@ -617,27 +552,21 @@ ui.editForm.addEventListener("submit", async e => {
         return;
     }
 
+    const price14 = parseInt(ui.editRentPrice14.value) || 0;
+    const price30 = parseInt(ui.editRentPrice30.value) || 0;
+    
+    if (price14 === 0 && price30 === 0) {
+        toast("Укажите цену хотя бы для одного варианта аренды");
+        return;
+    }
+
     const data = {
         name: ui.editName.value.trim(),
         description: ui.editDescription.value.trim() || "",
-        status: ui.editStatus.value
+        status: ui.editStatus.value,
+        rentPrice14: price14,
+        rentPrice30: price30
     };
-
-    if (data.status === "rented") {
-        const price14 = parseInt(ui.editRentPrice14.value) || 0;
-        const price30 = parseInt(ui.editRentPrice30.value) || 0;
-        
-        if (price14 === 0 && price30 === 0) {
-            toast("Укажите цену хотя бы для одного варианта аренды");
-            return;
-        }
-        
-        data.rentPrice14 = price14;
-        data.rentPrice30 = price30;
-    } else {
-        data.rentPrice14 = 0;
-        data.rentPrice30 = 0;
-    }
 
     if (ui.editFile.files.length) {
         const file = ui.editFile.files[0];
