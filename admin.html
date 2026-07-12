@@ -89,21 +89,14 @@
             color: var(--title);
             font-size: 14px;
         }
-        .rent-option .period-label {
-            font-size: 12px;
-            color: #888;
-            font-weight: 400;
-        }
         .admin-card__price {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--accent2);
             margin: 6px 0;
         }
-        .admin-card__rent-period {
-            font-size: 13px;
-            color: #666;
-            margin: 2px 0;
+        .admin-card__price .price-line {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent2);
+            display: block;
         }
         .edit-rent-options {
             display: grid;
@@ -122,24 +115,175 @@
             padding: 10px 12px;
             font-size: 14px;
         }
-        .rent-period-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 700;
-            background: #e8f0fe;
-            color: #1a73e8;
-            margin: 2px 0;
-        }
-        .rent-period-badge.month {
-            background: #fef3e8;
-            color: #e37400;
-        }
         .price-hint {
             font-size: 13px;
             color: #888;
             margin-top: 6px;
+        }
+
+        /* Заявки */
+        .orders-section {
+            margin-top: 40px;
+            border-top: 2px solid #f0f0f0;
+            padding-top: 30px;
+        }
+        .orders-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .orders-header h2 {
+            font-family: 'Nunito', sans-serif;
+            color: var(--title);
+            font-size: 28px;
+        }
+        .orders-header .badge-count {
+            background: var(--accent2);
+            color: #fff;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .order-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid #f9d342;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+        }
+        .order-card.pending {
+            border-left-color: #f9d342;
+        }
+        .order-card.confirmed {
+            border-left-color: #2ECC71;
+            opacity: 0.7;
+        }
+        .order-card.cancelled {
+            border-left-color: #E74C3C;
+            opacity: 0.6;
+        }
+        .order-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .order-info .order-item {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--title);
+        }
+        .order-info .order-details {
+            font-size: 14px;
+            color: #666;
+        }
+        .order-info .order-details span {
+            margin-right: 16px;
+        }
+        .order-status {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .order-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .order-status.confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .order-status.cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .order-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .order-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: .2s;
+        }
+        .order-actions button:hover {
+            transform: translateY(-2px);
+        }
+        .btn-confirm {
+            background: #2ECC71;
+            color: #fff;
+        }
+        .btn-cancel {
+            background: #E74C3C;
+            color: #fff;
+        }
+        .btn-delete-order {
+            background: #e8eaed;
+            color: #5f6368;
+        }
+        .orders-empty {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        .orders-empty h3 {
+            color: var(--title);
+            margin-bottom: 8px;
+        }
+
+        /* SMS настройки */
+        .sms-settings {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        .sms-settings .field {
+            max-width: 400px;
+        }
+        .sms-settings label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .sms-settings input {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #dfe5ec;
+            font-size: 15px;
+        }
+        .sms-settings input:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 4px rgba(255,140,66,.12);
+        }
+
+        @media (max-width: 768px) {
+            .order-card {
+                grid-template-columns: 1fr;
+            }
+            .order-actions {
+                justify-content: flex-start;
+            }
+            .rent-options {
+                grid-template-columns: 1fr;
+            }
+            .edit-rent-options {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -162,7 +306,7 @@
         <h2 class="hero__title">Добро пожаловать в админ-панель</h2>
         <p class="hero__text">
             Здесь можно управлять каталогом, добавлять новые товары,
-            изменять фотографии, загружать видео, менять статус проката
+            изменять фотографии, загружать видео, управлять заявками на аренду
             и контролировать весь ассортимент.
         </p>
     </section>
@@ -196,6 +340,13 @@
                 <span class="dashboard-label">Скоро</span>
             </div>
         </div>
+        <div class="dashboard-card" style="background: #fef3e8;">
+            <div class="dashboard-icon">📋</div>
+            <div class="dashboard-info">
+                <span class="dashboard-value" id="pendingOrders">0</span>
+                <span class="dashboard-label">Новых заявок</span>
+            </div>
+        </div>
     </section>
 
     <section id="loginSection" class="panel login-panel">
@@ -223,6 +374,17 @@
                 </p>
             </div>
             <button id="logoutBtn" class="btn">Выйти</button>
+        </div>
+
+        <!-- SMS Настройки -->
+        <div class="sms-settings">
+            <h3 style="margin-bottom: 12px;">📱 Настройка уведомлений</h3>
+            <div class="field">
+                <label for="adminPhone">Номер телефона для уведомлений</label>
+                <input id="adminPhone" type="tel" placeholder="+7XXXXXXXXXX" value="+79275524100">
+                <span style="font-size: 12px; color: #888; margin-top: 4px;">На этот номер будут приходить SMS о новых заявках</span>
+            </div>
+            <button id="savePhoneBtn" class="btn btn--primary" style="margin-top: 12px;">💾 Сохранить номер</button>
         </div>
 
         <div class="toolbar">
@@ -304,6 +466,20 @@
                 <span id="catalogCount">0 товаров</span>
             </div>
             <div id="adminList" class="admin-grid"></div>
+        </section>
+
+        <!-- Заявки на аренду -->
+        <section class="orders-section">
+            <div class="orders-header">
+                <h2>📋 Заявки на аренду</h2>
+                <span class="badge-count" id="ordersBadge">0</span>
+            </div>
+            <div id="ordersList">
+                <div class="orders-empty">
+                    <h3>Нет заявок</h3>
+                    <p>Здесь будут отображаться заявки от пользователей</p>
+                </div>
+            </div>
         </section>
     </section>
 </main>

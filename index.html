@@ -216,8 +216,29 @@
     .card__price {
       margin-top: 6px;
       font-weight: 700;
-      color: var(--accent2);
       font-size: 14px;
+    }
+    .card__price .price-line {
+      display: block;
+      color: var(--accent2);
+    }
+
+    .card__rent-btn {
+      margin-top: 10px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: .2s;
+      width: 100%;
+    }
+    .card__rent-btn:hover {
+      transform: scale(1.02);
+      box-shadow: var(--shadowHover);
     }
 
     .empty-catalog {
@@ -237,6 +258,108 @@
       text-align: center;
       padding: 40px;
       color: #888;
+    }
+
+    /* Модальное окно заявки */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: fadeIn .3s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-box .close-modal {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: #f5f6f8;
+      cursor: pointer;
+      font-size: 20px;
+      transition: .2s;
+    }
+    .modal-box .close-modal:hover {
+      background: #e8eaed;
+    }
+    .modal-box h2 {
+      font-family: 'Nunito', sans-serif;
+      color: var(--title);
+      margin-bottom: 8px;
+    }
+    .modal-box .modal-item {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent2);
+      margin-bottom: 16px;
+    }
+    .modal-box .field {
+      margin-bottom: 14px;
+    }
+    .modal-box .field label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--title);
+      margin-bottom: 4px;
+    }
+    .modal-box .field input,
+    .modal-box .field select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #dfe5ec;
+      font-size: 15px;
+      transition: .2s;
+    }
+    .modal-box .field input:focus,
+    .modal-box .field select:focus {
+      outline: none;
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 4px rgba(255,140,66,.12);
+    }
+    .modal-box .submit-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .modal-box .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadowHover);
+    }
+    .modal-box .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .footer {
@@ -274,6 +397,27 @@
       color: #fff;
     }
 
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--title);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-weight: 600;
+      opacity: 0;
+      transition: .3s;
+      z-index: 2000;
+      pointer-events: none;
+      box-shadow: var(--shadowHover);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     @media (max-width: 1100px) {
       .catalog { grid-template-columns: repeat(2, 1fr); }
       h1 { font-size: 30px; }
@@ -289,6 +433,7 @@
       .wrap { padding: 18px 14px 30px; }
       .card__media { aspect-ratio: 1/1; }
       .footer__phone { font-size: 20px; }
+      .modal-box { padding: 24px; margin: 10px; }
     }
   </style>
 </head>
@@ -308,7 +453,8 @@
     <section class="hero">
       <h2 class="hero__title">Уютный прокат игрушек и товаров для детей</h2>
       <p class="hero__text">
-        Здесь можно быстро посмотреть наличие, статус и стоимость аренды. Без корзины, покупок и лишних кнопок — только удобная витрина для родителей.
+        Здесь можно быстро посмотреть наличие, статус и стоимость аренды. 
+        Нажмите "Забронировать" на понравившемся товаре, чтобы оставить заявку.
       </p>
     </section>
 
@@ -316,6 +462,37 @@
       <div class="loading">⏳ Загрузка каталога...</div>
     </section>
   </main>
+
+  <!-- Модальное окно заявки -->
+  <div class="modal-overlay" id="rentModal">
+    <div class="modal-box">
+      <button class="close-modal" id="closeRentModal">×</button>
+      <h2>📋 Заявка на аренду</h2>
+      <div class="modal-item" id="modalItemName">Товар</div>
+      
+      <div class="field">
+        <label>Ваше имя</label>
+        <input id="rentUserName" type="text" placeholder="Введите ваше имя" required>
+      </div>
+      
+      <div class="field">
+        <label>Телефон</label>
+        <input id="rentUserPhone" type="tel" placeholder="+7XXXXXXXXXX" required>
+      </div>
+      
+      <div class="field">
+        <label>Срок аренды</label>
+        <select id="rentPeriod">
+          <option value="14">2 недели (14 дней) — <span id="price14Display">0</span> ₽</option>
+          <option value="30">1 месяц (30 дней) — <span id="price30Display">0</span> ₽</option>
+        </select>
+      </div>
+      
+      <button class="submit-btn" id="submitRentBtn">📩 Отправить заявку</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Готово</div>
 
   <footer class="footer">
     <div class="footer__inner">
@@ -346,6 +523,28 @@
       const db = firebase.firestore();
 
       const catalogContainer = document.getElementById("catalogContainer");
+      const rentModal = document.getElementById("rentModal");
+      const closeRentModal = document.getElementById("closeRentModal");
+      const modalItemName = document.getElementById("modalItemName");
+      const rentUserName = document.getElementById("rentUserName");
+      const rentUserPhone = document.getElementById("rentUserPhone");
+      const rentPeriod = document.getElementById("rentPeriod");
+      const price14Display = document.getElementById("price14Display");
+      const price30Display = document.getElementById("price30Display");
+      const submitRentBtn = document.getElementById("submitRentBtn");
+      const toastEl = document.getElementById("toast");
+
+      let currentItem = null;
+      let toastTimer = null;
+
+      function showToast(text) {
+        toastEl.textContent = text;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.remove("show");
+        }, 3000);
+      }
 
       const statusName = {
         available: "В наличии",
@@ -380,21 +579,28 @@
           `;
         }
 
-        // Цены отображаются всегда, независимо от статуса
         const price14 = item.rentPrice14 || 0;
         const price30 = item.rentPrice30 || 0;
         
         let priceHtml = "";
         if (price14 > 0 || price30 > 0) {
           priceHtml = `<div class="card__price">`;
-          if (price14 > 0) priceHtml += `2 недели: ${price14}₽ `;
-          if (price30 > 0) priceHtml += `1 месяц: ${price30}₽`;
+          if (price14 > 0) {
+            priceHtml += `<span class="price-line">📅 2 недели: ${price14} ₽</span>`;
+          }
+          if (price30 > 0) {
+            priceHtml += `<span class="price-line">📅 1 месяц: ${price30} ₽</span>`;
+          }
           priceHtml += `</div>`;
         }
 
         const descriptionHtml = item.description 
           ? `<div class="card__description">${truncateText(item.description, 120)}</div>`
           : "";
+
+        const rentBtn = item.status === "available" 
+          ? `<button class="card__rent-btn" data-item='${JSON.stringify(item)}'>🎯 Забронировать</button>`
+          : '';
 
         return `
           <article class="card">
@@ -406,6 +612,7 @@
               <h2 class="card__title">${item.name}</h2>
               ${descriptionHtml}
               ${priceHtml}
+              ${rentBtn}
             </div>
           </article>
         `;
@@ -422,8 +629,95 @@
           return;
         }
         catalogContainer.innerHTML = items.map(createCard).join("");
+        
+        // Вешаем обработчики на кнопки бронирования
+        document.querySelectorAll('.card__rent-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const item = JSON.parse(this.dataset.item);
+            openRentModal(item);
+          });
+        });
       }
 
+      // Модальное окно
+      function openRentModal(item) {
+        currentItem = item;
+        modalItemName.textContent = item.name;
+        price14Display.textContent = item.rentPrice14 || 0;
+        price30Display.textContent = item.rentPrice30 || 0;
+        rentUserName.value = '';
+        rentUserPhone.value = '';
+        rentPeriod.value = '14';
+        rentModal.classList.add('active');
+      }
+
+      function closeModal() {
+        rentModal.classList.remove('active');
+        currentItem = null;
+      }
+
+      closeRentModal.addEventListener('click', closeModal);
+      rentModal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+      });
+
+      // Отправка заявки
+      submitRentBtn.addEventListener('click', async function() {
+        const name = rentUserName.value.trim();
+        const phone = rentUserPhone.value.trim();
+        const period = rentPeriod.value;
+        
+        if (!name) {
+          showToast('Введите ваше имя');
+          return;
+        }
+        if (!phone || phone.length < 10) {
+          showToast('Введите корректный номер телефона');
+          return;
+        }
+        if (!currentItem) {
+          showToast('Ошибка: товар не выбран');
+          return;
+        }
+
+        this.disabled = true;
+        this.textContent = '⏳ Отправка...';
+
+        try {
+          const orderData = {
+            itemId: currentItem.firebaseId || currentItem.id,
+            itemName: currentItem.name,
+            rentOption: period,
+            rentPrice14: currentItem.rentPrice14 || 0,
+            rentPrice30: currentItem.rentPrice30 || 0,
+            userName: name,
+            userPhone: phone,
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          await db.collection('orders').add(orderData);
+          
+          showToast('✅ Заявка отправлена! Ожидайте подтверждения');
+          closeModal();
+          
+          // Отправляем SMS админу
+          const adminPhone = localStorage.getItem('admin_phone') || '+79275524100';
+          const message = `🆕 Новая заявка на аренду!\nТовар: ${currentItem.name}\nКлиент: ${name}\nТелефон: ${phone}\nСрок: ${period === '14' ? '2 недели' : '1 месяц'}`;
+          
+          // Отправка SMS (имитация)
+          console.log('📱 SMS:', message);
+          
+        } catch (error) {
+          console.error('Ошибка:', error);
+          showToast('❌ Ошибка отправки. Попробуйте позже');
+        }
+
+        this.disabled = false;
+        this.textContent = '📩 Отправить заявку';
+      });
+
+      // Загрузка каталога
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         
@@ -432,7 +726,7 @@
           .onSnapshot((snapshot) => {
             const items = [];
             snapshot.forEach((doc) => {
-              items.push({ id: doc.id, ...doc.data() });
+              items.push({ firebaseId: doc.id, ...doc.data() });
             });
             renderCatalog(items);
           }, (error) => {
@@ -447,6 +741,15 @@
       }
 
       loadCatalog();
+
+      // Сохраняем номер админа из localStorage
+      window.addEventListener('load', function() {
+        const saved = localStorage.getItem('admin_phone');
+        if (saved) {
+          // Можно использовать для отправки SMS
+        }
+      });
+
     })();
   </script>
 

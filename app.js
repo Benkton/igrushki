@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 8.0 (цены всегда отображаются для всех статусов)
+    Версия 9.0 (заявки на аренду + уведомления)
 =========================================================*/
 
 "use strict";
@@ -24,12 +24,14 @@ const auth = firebase.auth();
 =========================================================*/
 
 const LOGIN_KEY = "toy_admin";
+const ADMIN_PHONE_KEY = "admin_phone";
 
 /*=========================================================
     DATA
 =========================================================*/
 
 let catalog = [];
+let orders = [];
 let selectedFile = null;
 let editId = null;
 
@@ -60,11 +62,14 @@ const ui = {
     filter         : $("filterStatus"),
     sort           : $("sortItems"),
     list           : $("adminList"),
+    ordersList     : $("ordersList"),
+    ordersBadge    : $("ordersBadge"),
     toast          : $("toast"),
     total          : $("totalItems"),
     available      : $("availableItems"),
     rented         : $("rentedItems"),
     soon           : $("soonItems"),
+    pendingOrders  : $("pendingOrders"),
     count          : $("catalogCount"),
     editModal      : $("editModal"),
     editForm       : $("editForm"),
@@ -78,7 +83,9 @@ const ui = {
     rentPrice14    : $("rentPrice14"),
     rentPrice30    : $("rentPrice30"),
     itemDescription: $("itemDescription"),
-    itemStatus     : $("itemStatus")
+    itemStatus     : $("itemStatus"),
+    adminPhone     : $("adminPhone"),
+    savePhoneBtn   : $("savePhoneBtn")
 };
 
 /*=========================================================
@@ -125,6 +132,8 @@ async function login() {
         ui.passwordInput.value = "";
         toast("Добро пожаловать!");
         loadCatalog();
+        loadOrders();
+        loadAdminPhone();
     } catch (error) {
         console.error("Ошибка входа:", error);
         toast("Неверный email или пароль");
@@ -139,7 +148,9 @@ async function logout() {
         refreshLoginUI();
         toast("Вы вышли");
         catalog = [];
+        orders = [];
         render();
+        renderOrders();
     } catch (error) {
         console.error("Ошибка выхода:", error);
     }
@@ -154,6 +165,8 @@ auth.onAuthStateChanged((user) => {
     refreshLoginUI();
     if (user) {
         loadCatalog();
+        loadOrders();
+        loadAdminPhone();
     }
 });
 
@@ -183,9 +196,40 @@ function truncateText(text, maxLength) {
     return text.slice(0, maxLength) + "...";
 }
 
+function formatDate(timestamp) {
+    if (!timestamp) return "—";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+}
+
 function formatPrice(price) {
     if (!price || price === 0) return "—";
     return price + " ₽";
+}
+
+/*=========================================================
+    ADMIN PHONE
+=========================================================*/
+
+function loadAdminPhone() {
+    const saved = localStorage.getItem(ADMIN_PHONE_KEY);
+    if (saved) {
+        ui.adminPhone.value = saved;
+    }
+}
+
+ui.savePhoneBtn.addEventListener("click", () => {
+    const phone = ui.adminPhone.value.trim();
+    if (phone) {
+        localStorage.setItem(ADMIN_PHONE_KEY, phone);
+        toast("Номер сохранён");
+    } else {
+        toast("Введите номер телефона");
+    }
+});
+
+function getAdminPhone() {
+    return localStorage.getItem(ADMIN_PHONE_KEY) || "+79275524100";
 }
 
 /*=========================================================
@@ -254,6 +298,40 @@ ui.uploadArea.addEventListener("drop", e => {
     if (!e.dataTransfer.files.length) return;
     showPreview(e.dataTransfer.files[0]);
 });
+
+/*=========================================================
+    SMS NOTIFICATION (через Twilio или любой другой сервис)
+=========================================================*/
+
+async function sendSMS(phone, message) {
+    // В реальном проекте здесь должен быть вызов вашего серверного API
+    // с Twilio или другим SMS-провайдером
+    
+    console.log(`📱 Отправка SMS на ${phone}: ${message}`);
+    
+    // Имитация отправки (для демонстрации)
+    // В реальном проекте используйте:
+    // fetch('/api/send-sms', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ phone, message })
+    // });
+    
+    // Для демонстрации показываем в тосте
+    toast(`📱 Уведомление отправлено на ${phone}`);
+    
+    // Сохраняем уведомление в Firebase для истории
+    try {
+        await db.collection("notifications").add({
+            phone: phone,
+            message: message,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            read: false
+        });
+    } catch (e) {
+        console.error("Ошибка сохранения уведомления:", e);
+    }
+}
 
 /*=========================================================
     CRUD OPERATIONS (Firebase)
@@ -377,6 +455,65 @@ async function copyItem(firebaseId) {
 }
 
 /*=========================================================
+    ORDERS (Заявки)
+=========================================================*/
+
+function loadOrders() {
+    db.collection("orders")
+      .orderBy("createdAt", "desc")
+      .onSnapshot((snapshot) => {
+          orders = [];
+          snapshot.forEach((doc) => {
+              orders.push({ 
+                  orderId: doc.id, 
+                  ...doc.data() 
+              });
+          });
+          renderOrders();
+          updateStats();
+      }, (error) => {
+          console.error("Ошибка загрузки заявок:", error);
+      });
+}
+
+async function confirmOrder(orderId) {
+    try {
+        await db.collection("orders").doc(orderId).update({
+            status: "confirmed",
+            confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast("✅ Заявка подтверждена");
+    } catch (error) {
+        console.error("Ошибка подтверждения:", error);
+        toast("Ошибка подтверждения заявки");
+    }
+}
+
+async function cancelOrder(orderId) {
+    try {
+        await db.collection("orders").doc(orderId).update({
+            status: "cancelled",
+            cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast("❌ Заявка отклонена");
+    } catch (error) {
+        console.error("Ошибка отклонения:", error);
+        toast("Ошибка отклонения заявки");
+    }
+}
+
+async function deleteOrder(orderId) {
+    if (!confirm("Удалить заявку?")) return;
+    try {
+        await db.collection("orders").doc(orderId).delete();
+        toast("Заявка удалена");
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        toast("Ошибка удаления заявки");
+    }
+}
+
+/*=========================================================
     FILTERING & SORTING
 =========================================================*/
 
@@ -423,7 +560,6 @@ function createCard(item) {
         ? `<video class="admin-card__media" src="${item.media}" controls preload="metadata"></video>`
         : `<img class="admin-card__media" src="${item.media}" alt="${item.name}" loading="lazy">`;
 
-    // Цены отображаются всегда, независимо от статуса
     const price14 = item.rentPrice14 || 0;
     const price30 = item.rentPrice30 || 0;
     
@@ -431,10 +567,10 @@ function createCard(item) {
     if (price14 > 0 || price30 > 0) {
         priceHtml = `<div class="admin-card__price">`;
         if (price14 > 0) {
-            priceHtml += `2 недели: ${price14} ₽ `;
+            priceHtml += `<span class="price-line">📅 2 недели: ${price14} ₽</span>`;
         }
         if (price30 > 0) {
-            priceHtml += `1 месяц: ${price30} ₽`;
+            priceHtml += `<span class="price-line">📅 1 месяц: ${price30} ₽</span>`;
         }
         priceHtml += `</div>`;
     }
@@ -475,13 +611,76 @@ function render() {
     ui.list.innerHTML = items.map(createCard).join("");
 }
 
+function renderOrders() {
+    const pending = orders.filter(o => o.status === "pending");
+    const activeOrders = orders.filter(o => o.status !== "deleted");
+    
+    ui.ordersBadge.textContent = pending.length;
+    
+    if (!activeOrders.length) {
+        ui.ordersList.innerHTML = `
+            <div class="orders-empty">
+                <h3>Нет заявок</h3>
+                <p>Здесь будут отображаться заявки от пользователей</p>
+            </div>
+        `;
+        return;
+    }
+    
+    ui.ordersList.innerHTML = activeOrders.map(order => {
+        const statusClass = order.status === "pending" ? "pending" : 
+                           order.status === "confirmed" ? "confirmed" : "cancelled";
+        const statusLabel = order.status === "pending" ? "⏳ Ожидает" :
+                           order.status === "confirmed" ? "✅ Подтверждена" : "❌ Отклонена";
+        
+        const actions = order.status === "pending" ? `
+            <div class="order-actions">
+                <button class="btn-confirm" onclick="window.confirmOrder('${order.orderId}')">✅ Подтвердить</button>
+                <button class="btn-cancel" onclick="window.cancelOrder('${order.orderId}')">❌ Отклонить</button>
+            </div>
+        ` : `
+            <div class="order-actions">
+                <button class="btn-delete-order" onclick="window.deleteOrder('${order.orderId}')">🗑 Удалить</button>
+            </div>
+        `;
+        
+        const rentOption = order.rentOption === "14" ? "2 недели" : "1 месяц";
+        const rentPrice = order.rentOption === "14" ? order.rentPrice14 : order.rentPrice30;
+        
+        return `
+            <div class="order-card ${statusClass}">
+                <div class="order-info">
+                    <div class="order-item">${order.itemName}</div>
+                    <div class="order-details">
+                        <span>👤 ${order.userName || 'Аноним'}</span>
+                        <span>📱 ${order.userPhone || '—'}</span>
+                        <span>📅 ${order.rentOption === "14" ? '2 недели' : '1 месяц'}</span>
+                        <span>💰 ${rentPrice || 0} ₽</span>
+                        <span>🕐 ${formatDate(order.createdAt)}</span>
+                    </div>
+                    <span class="order-status ${statusClass}">${statusLabel}</span>
+                </div>
+                ${actions}
+            </div>
+        `;
+    }).join("");
+}
+
 function updateStats() {
     ui.total.textContent = catalog.length;
     ui.available.textContent = catalog.filter(x => x.status === "available").length;
     ui.rented.textContent   = catalog.filter(x => x.status === "rented").length;
     ui.soon.textContent     = catalog.filter(x => x.status === "soon").length;
     ui.count.textContent    = catalog.length + " товаров";
+    
+    const pending = orders.filter(o => o.status === "pending").length;
+    ui.pendingOrders.textContent = pending;
 }
+
+// Глобальные функции для кнопок в заявках
+window.confirmOrder = confirmOrder;
+window.cancelOrder = cancelOrder;
+window.deleteOrder = deleteOrder;
 
 /*=========================================================
     EVENT DELEGATION
@@ -612,11 +811,15 @@ auth.onAuthStateChanged((user) => {
     refreshLoginUI();
     if (user) {
         loadCatalog();
+        loadOrders();
+        loadAdminPhone();
     }
 });
 
 if (isLogged()) {
     loadCatalog();
+    loadOrders();
+    loadAdminPhone();
 }
 
 toast("Админ-панель готова");
