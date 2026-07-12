@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 9.0 (заявки на аренду + уведомления)
+    Версия 9.0 (заявки на аренду без SMS)
 =========================================================*/
 
 "use strict";
@@ -24,7 +24,6 @@ const auth = firebase.auth();
 =========================================================*/
 
 const LOGIN_KEY = "toy_admin";
-const ADMIN_PHONE_KEY = "admin_phone";
 
 /*=========================================================
     DATA
@@ -83,9 +82,7 @@ const ui = {
     rentPrice14    : $("rentPrice14"),
     rentPrice30    : $("rentPrice30"),
     itemDescription: $("itemDescription"),
-    itemStatus     : $("itemStatus"),
-    adminPhone     : $("adminPhone"),
-    savePhoneBtn   : $("savePhoneBtn")
+    itemStatus     : $("itemStatus")
 };
 
 /*=========================================================
@@ -133,7 +130,6 @@ async function login() {
         toast("Добро пожаловать!");
         loadCatalog();
         loadOrders();
-        loadAdminPhone();
     } catch (error) {
         console.error("Ошибка входа:", error);
         toast("Неверный email или пароль");
@@ -166,7 +162,6 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         loadCatalog();
         loadOrders();
-        loadAdminPhone();
     }
 });
 
@@ -205,31 +200,6 @@ function formatDate(timestamp) {
 function formatPrice(price) {
     if (!price || price === 0) return "—";
     return price + " ₽";
-}
-
-/*=========================================================
-    ADMIN PHONE
-=========================================================*/
-
-function loadAdminPhone() {
-    const saved = localStorage.getItem(ADMIN_PHONE_KEY);
-    if (saved) {
-        ui.adminPhone.value = saved;
-    }
-}
-
-ui.savePhoneBtn.addEventListener("click", () => {
-    const phone = ui.adminPhone.value.trim();
-    if (phone) {
-        localStorage.setItem(ADMIN_PHONE_KEY, phone);
-        toast("Номер сохранён");
-    } else {
-        toast("Введите номер телефона");
-    }
-});
-
-function getAdminPhone() {
-    return localStorage.getItem(ADMIN_PHONE_KEY) || "+79275524100";
 }
 
 /*=========================================================
@@ -298,40 +268,6 @@ ui.uploadArea.addEventListener("drop", e => {
     if (!e.dataTransfer.files.length) return;
     showPreview(e.dataTransfer.files[0]);
 });
-
-/*=========================================================
-    SMS NOTIFICATION (через Twilio или любой другой сервис)
-=========================================================*/
-
-async function sendSMS(phone, message) {
-    // В реальном проекте здесь должен быть вызов вашего серверного API
-    // с Twilio или другим SMS-провайдером
-    
-    console.log(`📱 Отправка SMS на ${phone}: ${message}`);
-    
-    // Имитация отправки (для демонстрации)
-    // В реальном проекте используйте:
-    // fetch('/api/send-sms', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ phone, message })
-    // });
-    
-    // Для демонстрации показываем в тосте
-    toast(`📱 Уведомление отправлено на ${phone}`);
-    
-    // Сохраняем уведомление в Firebase для истории
-    try {
-        await db.collection("notifications").add({
-            phone: phone,
-            message: message,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            read: false
-        });
-    } catch (e) {
-        console.error("Ошибка сохранения уведомления:", e);
-    }
-}
 
 /*=========================================================
     CRUD OPERATIONS (Firebase)
@@ -654,7 +590,7 @@ function renderOrders() {
                     <div class="order-details">
                         <span>👤 ${order.userName || 'Аноним'}</span>
                         <span>📱 ${order.userPhone || '—'}</span>
-                        <span>📅 ${order.rentOption === "14" ? '2 недели' : '1 месяц'}</span>
+                        <span>📅 ${rentOption}</span>
                         <span>💰 ${rentPrice || 0} ₽</span>
                         <span>🕐 ${formatDate(order.createdAt)}</span>
                     </div>
@@ -812,14 +748,12 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         loadCatalog();
         loadOrders();
-        loadAdminPhone();
     }
 });
 
 if (isLogged()) {
     loadCatalog();
     loadOrders();
-    loadAdminPhone();
 }
 
 toast("Админ-панель готова");

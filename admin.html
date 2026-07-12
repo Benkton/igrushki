@@ -244,33 +244,6 @@
             margin-bottom: 8px;
         }
 
-        /* SMS настройки */
-        .sms-settings {
-            background: #f8f9fa;
-            padding: 16px;
-            border-radius: 14px;
-            margin-bottom: 20px;
-            border: 1px solid #e9ecef;
-        }
-        .sms-settings .field {
-            max-width: 400px;
-        }
-        .sms-settings label {
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .sms-settings input {
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid #dfe5ec;
-            font-size: 15px;
-        }
-        .sms-settings input:focus {
-            outline: none;
-            border-color: var(--accent2);
-            box-shadow: 0 0 0 4px rgba(255,140,66,.12);
-        }
-
         @media (max-width: 768px) {
             .order-card {
                 grid-template-columns: 1fr;
@@ -374,17 +347,6 @@
                 </p>
             </div>
             <button id="logoutBtn" class="btn">Выйти</button>
-        </div>
-
-        <!-- SMS Настройки -->
-        <div class="sms-settings">
-            <h3 style="margin-bottom: 12px;">📱 Настройка уведомлений</h3>
-            <div class="field">
-                <label for="adminPhone">Номер телефона для уведомлений</label>
-                <input id="adminPhone" type="tel" placeholder="+7XXXXXXXXXX" value="+79275524100">
-                <span style="font-size: 12px; color: #888; margin-top: 4px;">На этот номер будут приходить SMS о новых заявках</span>
-            </div>
-            <button id="savePhoneBtn" class="btn btn--primary" style="margin-top: 12px;">💾 Сохранить номер</button>
         </div>
 
         <div class="toolbar">
