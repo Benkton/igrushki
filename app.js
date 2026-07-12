@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 6.0 (добавлены настройки аренды: 2 недели и месяц)
+    Версия 7.0 (только 2 недели и месяц, без ручных дат)
 =========================================================*/
 
 "use strict";
@@ -72,13 +72,9 @@ const ui = {
     editStatus     : $("editStatus"),
     editDescription: $("editDescription"),
     editFile       : $("editFile"),
-    editRentStart  : $("editRentStart"),
-    editRentEnd    : $("editRentEnd"),
     editRentPrice14: $("editRentPrice14"),
     editRentPrice30: $("editRentPrice30"),
     closeEdit      : $("closeEdit"),
-    rentStart      : $("rentStart"),
-    rentEnd        : $("rentEnd"),
     rentPrice14    : $("rentPrice14"),
     rentPrice30    : $("rentPrice30"),
     rentedWrap     : $("rentedWrap"),
@@ -182,32 +178,6 @@ const statusClass = {
     soon: "status-soon"
 };
 
-function formatDate(dateStr) {
-    if (!dateStr) return "";
-    const parts = dateStr.split("-");
-    if (parts.length === 3) {
-        return `${parts[2]}.${parts[1]}.${parts[0]}`;
-    }
-    return dateStr;
-}
-
-function getRentalDays(startDate, endDate) {
-    if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
-}
-
-function getDaysWord(days) {
-    const lastDigit = days % 10;
-    const lastTwo = days % 100;
-    if (lastTwo >= 11 && lastTwo <= 14) return "дней";
-    if (lastDigit === 1) return "день";
-    if (lastDigit >= 2 && lastDigit <= 4) return "дня";
-    return "дней";
-}
-
 function truncateText(text, maxLength) {
     if (!text) return "";
     if (text.length <= maxLength) return text;
@@ -219,24 +189,29 @@ function formatPrice(price) {
     return price + " ₽";
 }
 
+function getRentPeriodLabel(price14, price30) {
+    let labels = [];
+    if (price14 > 0) labels.push('14 дней');
+    if (price30 > 0) labels.push('30 дней');
+    return labels.join(' / ');
+}
+
 /*=========================================================
-    TOGGLE RENT DATES
+    TOGGLE RENT
 =========================================================*/
 
-function toggleRentDates(status) {
+function toggleRentFields(status) {
     if (status === "rented") {
         ui.rentedWrap.classList.remove("hidden");
     } else {
         ui.rentedWrap.classList.add("hidden");
-        ui.rentStart.value = "";
-        ui.rentEnd.value = "";
         ui.rentPrice14.value = "";
         ui.rentPrice30.value = "";
     }
 }
 
 ui.itemStatus.addEventListener("change", function() {
-    toggleRentDates(this.value);
+    toggleRentFields(this.value);
 });
 
 ui.editStatus.addEventListener("change", function() {
@@ -245,8 +220,6 @@ ui.editStatus.addEventListener("change", function() {
         wrap.classList.remove("hidden");
     } else {
         wrap.classList.add("hidden");
-        ui.editRentStart.value = "";
-        ui.editRentEnd.value = "";
         ui.editRentPrice14.value = "";
         ui.editRentPrice30.value = "";
     }
@@ -357,24 +330,12 @@ async function addItem(e) {
 
     const status = ui.itemStatus.value;
     const description = ui.itemDescription.value.trim();
-    const rentStart = ui.rentStart.value;
-    const rentEnd = ui.rentEnd.value;
     const price14 = parseInt(ui.rentPrice14.value) || 0;
     const price30 = parseInt(ui.rentPrice30.value) || 0;
 
     if (status === "rented") {
-        if (!rentStart || !rentEnd) {
-            toast("Укажите даты начала и окончания аренды");
-            return;
-        }
-        const start = new Date(rentStart);
-        const end = new Date(rentEnd);
-        if (start >= end) {
-            toast("Дата окончания должна быть позже даты начала");
-            return;
-        }
         if (price14 === 0 && price30 === 0) {
-            toast("Укажите цену хотя бы для одного варианта аренды");
+            toast("Укажите цену хотя бы для одного варианта аренды (14 дней или 30 дней)");
             return;
         }
     }
@@ -383,8 +344,6 @@ async function addItem(e) {
         name: name,
         description: description || "",
         status: status,
-        rentStart: status === "rented" ? rentStart : "",
-        rentEnd: status === "rented" ? rentEnd : "",
         rentPrice14: status === "rented" ? price14 : 0,
         rentPrice30: status === "rented" ? price30 : 0,
         media: await toBase64(selectedFile),
@@ -441,8 +400,6 @@ async function copyItem(firebaseId) {
         name: item.name + " (копия)",
         description: item.description || "",
         status: item.status,
-        rentStart: item.rentStart || "",
-        rentEnd: item.rentEnd || "",
         rentPrice14: item.rentPrice14 || 0,
         rentPrice30: item.rentPrice30 || 0,
         media: item.media,
@@ -490,14 +447,6 @@ function getVisibleItems() {
         case "old":
             arr.sort((a, b) => a.id - b.id);
             break;
-        case "rentEnd":
-            arr.sort((a, b) => {
-                if (!a.rentEnd && !b.rentEnd) return 0;
-                if (!a.rentEnd) return 1;
-                if (!b.rentEnd) return -1;
-                return a.rentEnd.localeCompare(b.rentEnd);
-            });
-            break;
         default:
             arr.sort((a, b) => b.id - a.id);
     }
@@ -515,8 +464,7 @@ function createCard(item) {
         : `<img class="admin-card__media" src="${item.media}" alt="${item.name}" loading="lazy">`;
 
     let rentInfo = "";
-    if (item.status === "rented" && item.rentStart && item.rentEnd) {
-        const days = getRentalDays(item.rentStart, item.rentEnd);
+    if (item.status === "rented") {
         const price14 = item.rentPrice14 || 0;
         const price30 = item.rentPrice30 || 0;
         
@@ -524,18 +472,26 @@ function createCard(item) {
         if (price14 > 0 || price30 > 0) {
             priceHtml = `<div class="admin-card__price">`;
             if (price14 > 0) {
-                priceHtml += `14 дней: ${price14} ₽ `;
+                priceHtml += `2 недели: ${price14} ₽ `;
             }
             if (price30 > 0) {
-                priceHtml += `30 дней: ${price30} ₽`;
+                priceHtml += `1 месяц: ${price30} ₽`;
             }
             priceHtml += `</div>`;
         }
         
+        let periodHtml = "";
+        if (price14 > 0 && price30 > 0) {
+            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: 14 дней и 30 дней</div>`;
+        } else if (price14 > 0) {
+            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: только 14 дней</div>`;
+        } else if (price30 > 0) {
+            periodHtml = `<div class="admin-card__rent-period">📅 Доступно: только 30 дней</div>`;
+        }
+        
         rentInfo = `
             <div style="margin-top: 8px; font-size: 13px; color: #555;">
-                <div>📅 ${formatDate(item.rentStart)} → ${formatDate(item.rentEnd)}</div>
-                <div style="font-weight: 600; color: var(--accent2);">${days} ${getDaysWord(days)}</div>
+                ${periodHtml}
                 ${priceHtml}
             </div>
         `;
@@ -629,8 +585,6 @@ function openEditor(firebaseId) {
     ui.editName.value = item.name;
     ui.editStatus.value = item.status;
     ui.editDescription.value = item.description || "";
-    ui.editRentStart.value = item.rentStart || "";
-    ui.editRentEnd.value = item.rentEnd || "";
     ui.editRentPrice14.value = item.rentPrice14 || "";
     ui.editRentPrice30.value = item.rentPrice30 || "";
     ui.editFile.value = "";
@@ -670,31 +624,17 @@ ui.editForm.addEventListener("submit", async e => {
     };
 
     if (data.status === "rented") {
-        const start = ui.editRentStart.value;
-        const end = ui.editRentEnd.value;
         const price14 = parseInt(ui.editRentPrice14.value) || 0;
         const price30 = parseInt(ui.editRentPrice30.value) || 0;
         
-        if (!start || !end) {
-            toast("Укажите даты начала и окончания аренды");
-            return;
-        }
-        if (new Date(start) >= new Date(end)) {
-            toast("Дата окончания должна быть позже даты начала");
-            return;
-        }
         if (price14 === 0 && price30 === 0) {
             toast("Укажите цену хотя бы для одного варианта аренды");
             return;
         }
         
-        data.rentStart = start;
-        data.rentEnd = end;
         data.rentPrice14 = price14;
         data.rentPrice30 = price30;
     } else {
-        data.rentStart = "";
-        data.rentEnd = "";
         data.rentPrice14 = 0;
         data.rentPrice30 = 0;
     }

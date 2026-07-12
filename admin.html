@@ -15,7 +15,6 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Дополнительные стили для поля описания */
         .field textarea {
             width: 100%;
             padding: 14px 16px;
@@ -47,7 +46,7 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        /* Стили для цены и вариантов аренды */
+        
         .rent-options {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -123,6 +122,20 @@
         .edit-rent-options .field input {
             padding: 10px 12px;
             font-size: 14px;
+        }
+        .rent-period-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #e8f0fe;
+            color: #1a73e8;
+            margin: 2px 0;
+        }
+        .rent-period-badge.month {
+            background: #fef3e8;
+            color: #e37400;
         }
     </style>
 </head>
@@ -220,7 +233,6 @@
                 <option value="new">Сначала новые</option>
                 <option value="old">Сначала старые</option>
                 <option value="name">По названию</option>
-                <option value="rentEnd">По дате возврата</option>
             </select>
         </div>
 
@@ -251,7 +263,6 @@
                                 <input id="rentPrice14" type="number" placeholder="0" min="0" step="50">
                                 <span>₽</span>
                             </div>
-                            <span class="period-label">Цена за 14 дней аренды</span>
                         </div>
                         <div class="rent-option">
                             <label>📅 1 месяц (30 дней)</label>
@@ -259,18 +270,10 @@
                                 <input id="rentPrice30" type="number" placeholder="0" min="0" step="50">
                                 <span>₽</span>
                             </div>
-                            <span class="period-label">Цена за 30 дней аренды</span>
                         </div>
                     </div>
-                    <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div>
-                            <label style="font-weight: 400; font-size: 13px;">Дата начала</label>
-                            <input id="rentStart" type="date">
-                        </div>
-                        <div>
-                            <label style="font-weight: 400; font-size: 13px;">Дата окончания</label>
-                            <input id="rentEnd" type="date">
-                        </div>
+                    <div style="margin-top: 12px; font-size: 13px; color: #888;">
+                        ⚡ Выберите хотя бы один вариант аренды
                     </div>
                 </div>
             </div>
@@ -337,15 +340,8 @@
                         <input id="editRentPrice30" type="number" placeholder="Цена" min="0" step="50">
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-                    <div>
-                        <label style="font-weight: 400; font-size: 13px;">Дата начала</label>
-                        <input id="editRentStart" type="date">
-                    </div>
-                    <div>
-                        <label style="font-weight: 400; font-size: 13px;">Дата окончания</label>
-                        <input id="editRentEnd" type="date">
-                    </div>
+                <div style="margin-top: 8px; font-size: 13px; color: #888;">
+                    ⚡ Укажите цену хотя бы для одного варианта
                 </div>
             </div>
             <div class="field">

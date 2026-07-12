@@ -8,37 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   
   <style>
-    /* =====================================================
-       RESET & BASE
-    ===================================================== */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(180deg, #fff, #fbfbfa);
-      color: #4A4A4A;
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-    }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    /* =====================================================
-       VARIABLES
-    ===================================================== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     :root {
       --bg: #fbfbfa;
       --card: #ffffff;
@@ -54,9 +29,17 @@
       --radius: 16px;
     }
 
-    /* =====================================================
-       HEADER
-    ===================================================== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #fff, #fbfbfa);
+      color: #4A4A4A;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
     .header {
       width: 100%;
       background: #fff;
@@ -113,18 +96,12 @@
       background: rgba(255, 255, 255, .22);
     }
 
-    /* =====================================================
-       WRAP
-    ===================================================== */
     .wrap {
       max-width: 1280px;
       margin: 0 auto;
       padding: 24px 20px 40px;
     }
 
-    /* =====================================================
-       HERO
-    ===================================================== */
     .hero {
       margin-bottom: 18px;
       padding: 20px;
@@ -148,18 +125,12 @@
       max-width: 720px;
     }
 
-    /* =====================================================
-       CATALOG GRID
-    ===================================================== */
     .catalog {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
     }
 
-    /* =====================================================
-       CARD
-    ===================================================== */
     .card {
       background: var(--card);
       border-radius: var(--radius);
@@ -198,9 +169,6 @@
       background: #f3f5f7;
     }
 
-    /* =====================================================
-       BADGE
-    ===================================================== */
     .badge {
       position: absolute;
       top: 12px;
@@ -218,9 +186,6 @@
     .badge--rented { background: var(--red); }
     .badge--soon { background: var(--gray); }
 
-    /* =====================================================
-       CARD BODY
-    ===================================================== */
     .card__body {
       padding: 14px 14px 16px;
       flex: 1;
@@ -248,23 +213,6 @@
       overflow: hidden;
     }
 
-    .card__rent-dates {
-      font-size: 13px;
-      color: #555;
-      margin-top: 6px;
-      padding: 6px 10px;
-      background: #f8f6f0;
-      border-radius: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .card__rent-dates .days {
-      font-weight: 700;
-      color: var(--accent2);
-    }
-
     .card__price {
       margin-top: 6px;
       font-weight: 700;
@@ -272,9 +220,12 @@
       font-size: 14px;
     }
 
-    /* =====================================================
-       EMPTY STATE
-    ===================================================== */
+    .card__rent-period {
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+    }
+
     .empty-catalog {
       grid-column: 1 / -1;
       text-align: center;
@@ -294,9 +245,6 @@
       color: #888;
     }
 
-    /* =====================================================
-       FOOTER
-    ===================================================== */
     .footer {
       background: #2C3E50;
       color: #fff;
@@ -332,9 +280,23 @@
       color: #fff;
     }
 
-    /* =====================================================
-       RESPONSIVE
-    ===================================================== */
+    .rent-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      margin: 2px 2px 2px 0;
+    }
+    .rent-badge.week {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+    .rent-badge.month {
+      background: #fef3e8;
+      color: #e37400;
+    }
+
     @media (max-width: 1100px) {
       .catalog { grid-template-columns: repeat(2, 1fr); }
       h1 { font-size: 30px; }
@@ -345,26 +307,11 @@
         flex-direction: column;
         align-items: flex-start;
       }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      .catalog {
-        grid-template-columns: 1fr;
-      }
-
-      .wrap {
-        padding: 18px 14px 30px;
-      }
-
-      .card__media {
-        aspect-ratio: 1/1;
-      }
-
-      .footer__phone {
-        font-size: 20px;
-      }
+      h1 { font-size: 24px; }
+      .catalog { grid-template-columns: 1fr; }
+      .wrap { padding: 18px 14px 30px; }
+      .card__media { aspect-ratio: 1/1; }
+      .footer__phone { font-size: 20px; }
     }
   </style>
 </head>
@@ -435,24 +382,6 @@
         soon: "badge--soon"
       };
 
-      function formatDate(dateStr) {
-        if (!dateStr) return "";
-        const parts = dateStr.split("-");
-        if (parts.length === 3) {
-          return `${parts[2]}.${parts[1]}.${parts[0]}`;
-        }
-        return dateStr;
-      }
-
-      function getDaysWord(days) {
-        const lastDigit = days % 10;
-        const lastTwo = days % 100;
-        if (lastTwo >= 11 && lastTwo <= 14) return "дней";
-        if (lastDigit === 1) return "день";
-        if (lastDigit >= 2 && lastDigit <= 4) return "дня";
-        return "дней";
-      }
-
       function truncateText(text, maxLength) {
         if (!text) return "";
         if (text.length <= maxLength) return text;
@@ -475,31 +404,31 @@
         }
 
         let rentHtml = "";
-        if (item.status === "rented" && item.rentStart && item.rentEnd) {
-          const start = new Date(item.rentStart);
-          const end = new Date(item.rentEnd);
-          const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        if (item.status === "rented") {
+          const price14 = item.rentPrice14 || 0;
+          const price30 = item.rentPrice30 || 0;
           
-          if (days > 0) {
-            let priceHtml = "";
-            const price14 = item.rentPrice14 || 0;
-            const price30 = item.rentPrice30 || 0;
-            
-            if (price14 > 0 || price30 > 0) {
-              priceHtml = `<div class="card__price">`;
-              if (price14 > 0) priceHtml += `14 дней: ${price14}₽ `;
-              if (price30 > 0) priceHtml += `30 дней: ${price30}₽`;
-              priceHtml += `</div>`;
-            }
-
-            rentHtml = `
-              <div class="card__rent-dates">
-                <span>📅 ${formatDate(item.rentStart)} — ${formatDate(item.rentEnd)}</span>
-                <span class="days">${days} ${getDaysWord(days)}</span>
-              </div>
-              ${priceHtml}
-            `;
+          let priceHtml = "";
+          if (price14 > 0 || price30 > 0) {
+            priceHtml = `<div class="card__price">`;
+            if (price14 > 0) priceHtml += `2 недели: ${price14}₽ `;
+            if (price30 > 0) priceHtml += `1 месяц: ${price30}₽`;
+            priceHtml += `</div>`;
           }
+
+          let periodHtml = "";
+          let badges = "";
+          if (price14 > 0) badges += `<span class="rent-badge week">14 дней</span> `;
+          if (price30 > 0) badges += `<span class="rent-badge month">30 дней</span>`;
+          
+          if (badges) {
+            periodHtml = `<div class="card__rent-period">Доступно: ${badges}</div>`;
+          }
+
+          rentHtml = `
+            ${periodHtml}
+            ${priceHtml}
+          `;
         }
 
         const descriptionHtml = item.description 
