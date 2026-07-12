@@ -536,7 +536,20 @@
         appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
       };
 
-      firebase.initializeApp(firebaseConfig);
+      // Инициализация Firebase с обработкой ошибок
+      try {
+        firebase.initializeApp(firebaseConfig);
+      } catch (e) {
+        console.error('Ошибка инициализации Firebase:', e);
+        document.getElementById('catalogContainer').innerHTML = `
+          <div class="empty-catalog">
+            <h3>❌ Ошибка подключения</h3>
+            <p>Не удалось подключиться к базе данных</p>
+          </div>
+        `;
+        return;
+      }
+      
       const db = firebase.firestore();
 
       const catalogContainer = document.getElementById("catalogContainer");
@@ -616,12 +629,13 @@
           ? `<div class="card__description">${truncateText(item.description, 120)}</div>`
           : "";
 
+        // Передаем весь объект item в data-атрибут
         const rentBtn = item.status === "available" 
-          ? `<button class="card__rent-btn" data-item='${JSON.stringify(item)}'>🎯 Забронировать</button>`
+          ? `<button class="card__rent-btn" data-item-id="${item.firebaseId || item.id || ''}">🎯 Забронировать</button>`
           : '';
 
         return `
-          <article class="card">
+          <article class="card" data-item-id="${item.firebaseId || item.id || ''}">
             <div class="card__media">
               <span class="badge ${statusBadgeClass[item.status] || 'badge--soon'}">${statusName[item.status] || item.status}</span>
               ${mediaHtml}
@@ -648,14 +662,17 @@
         }
         catalogContainer.innerHTML = items.map(createCard).join("");
         
+        // Вешаем обработчики на кнопки бронирования
         document.querySelectorAll('.card__rent-btn').forEach(btn => {
           btn.addEventListener('click', function() {
-            try {
-              const item = JSON.parse(this.dataset.item);
+            const card = this.closest('.card');
+            const itemId = card.dataset.itemId;
+            // Находим товар по ID в массиве items
+            const item = items.find(i => (i.firebaseId || i.id) === itemId);
+            if (item) {
               openRentModal(item);
-            } catch (e) {
-              console.error('Ошибка парсинга:', e);
-              showToast('Ошибка при открытии формы', 'error');
+            } else {
+              showToast('Ошибка: товар не найден', 'error');
             }
           });
         });
@@ -696,11 +713,13 @@
         if (e.key === 'Escape') closeModal();
       });
 
+      // Отправка заявки
       submitRentBtn.addEventListener('click', async function() {
         const name = rentUserName.value.trim();
         const phone = rentUserPhone.value.trim();
         const period = parseInt(rentPeriod.value);
         
+        // Валидация
         if (!name) {
           showToast('Введите ваше имя', 'error');
           rentUserName.focus();
@@ -728,7 +747,7 @@
         try {
           const orderData = {
             itemId: currentItem.firebaseId || currentItem.id || 'unknown',
-            itemName: currentItem.name,
+            itemName: currentItem.name || 'Без названия',
             rentOption: period === 14 ? '14' : '30',
             rentPrice14: currentItem.rentPrice14 || 0,
             rentPrice30: currentItem.rentPrice30 || 0,
@@ -738,7 +757,10 @@
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
 
-          await db.collection('orders').add(orderData);
+          console.log('📤 Отправка заявки:', orderData);
+
+          const docRef = await db.collection('orders').add(orderData);
+          console.log('✅ Заявка создана, ID:', docRef.id);
           
           showToast('✅ Заявка отправлена! Ожидайте подтверждения', 'success');
           closeModal();
@@ -752,6 +774,9 @@
         this.textContent = '📩 Отправить заявку';
       });
 
+      // Загрузка каталога
+      let itemsCache = [];
+
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         
@@ -761,8 +786,12 @@
             .onSnapshot((snapshot) => {
               const items = [];
               snapshot.forEach((doc) => {
-                items.push({ firebaseId: doc.id, ...doc.data() });
+                items.push({ 
+                  firebaseId: doc.id, 
+                  ...doc.data() 
+                });
               });
+              itemsCache = items;
               renderCatalog(items);
             }, (error) => {
               console.error("Ошибка загрузки:", error);
