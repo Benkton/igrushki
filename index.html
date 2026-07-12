@@ -13,311 +13,363 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   
   <style>
-    :root{
-      --bg:#fbfbfa;
-      --card:#ffffff;
-      --accent:#F9D342;
-      --accent2:#FF8C42;
-      --green:#2ECC71;
-      --red:#E74C3C;
-      --gray:#95A5A6;
-      --title:#2C3E50;
-      --text:#4A4A4A;
-      --shadow:0 8px 24px rgba(44,62,80,.08);
-      --shadowHover:0 14px 30px rgba(44,62,80,.14);
-      --radius:16px;
+    /* =====================================================
+       RESET & BASE
+    ===================================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    *{box-sizing:border-box}
-    html,body{
-      margin:0;
-      padding:0;
-      background:linear-gradient(180deg,#fff, var(--bg));
-      color:var(--text);
-      font-family:'Inter',sans-serif;
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #fff, #fbfbfa);
+      color: #4A4A4A;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
     }
 
-    a{text-decoration:none;color:inherit}
-
-    .header{
-      width:100%;
-      background:#fff;
-      box-shadow:0 2px 16px rgba(0,0,0,.06);
-      position:sticky;
-      top:0;
-      z-index:10;
+    a {
+      text-decoration: none;
+      color: inherit;
     }
 
-    .header__inner{
-      max-width:1280px;
-      margin:0 auto;
-      padding:18px 20px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:16px;
+    /* =====================================================
+       VARIABLES
+    ===================================================== */
+    :root {
+      --bg: #fbfbfa;
+      --card: #ffffff;
+      --accent: #F9D342;
+      --accent2: #FF8C42;
+      --green: #2ECC71;
+      --red: #E74C3C;
+      --gray: #95A5A6;
+      --title: #2C3E50;
+      --text: #4A4A4A;
+      --shadow: 0 8px 24px rgba(44, 62, 80, .08);
+      --shadowHover: 0 14px 30px rgba(44, 62, 80, .14);
+      --radius: 16px;
     }
 
-    h1{
-      margin:0;
-      font-family:'Nunito',sans-serif;
-      font-size:36px;
-      line-height:1.1;
-      color:var(--title);
-      letter-spacing:-.02em;
-      font-weight:800;
+    /* =====================================================
+       HEADER
+    ===================================================== */
+    .header {
+      width: 100%;
+      background: #fff;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, .06);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
-    .vk-link{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:12px 16px;
-      border-radius:999px;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      color:#fff;
-      font-weight:700;
-      box-shadow:0 8px 20px rgba(255,140,66,.25);
-      transition:.2s ease;
-      white-space:nowrap;
+    .header__inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
     }
 
-    .vk-link:hover{
-      transform:translateY(-1px);
-      box-shadow:0 12px 24px rgba(255,140,66,.3);
+    h1 {
+      margin: 0;
+      font-family: 'Nunito', sans-serif;
+      font-size: 36px;
+      line-height: 1.1;
+      color: var(--title);
+      letter-spacing: -.02em;
+      font-weight: 800;
     }
 
-    .vk-icon{
-      width:18px;
-      height:18px;
-      display:inline-block;
-      border-radius:5px;
-      background:rgba(255,255,255,.22);
+    .vk-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 8px 20px rgba(255, 140, 66, .25);
+      transition: .2s ease;
+      white-space: nowrap;
     }
 
-    .wrap{
-      max-width:1280px;
-      margin:0 auto;
-      padding:24px 20px 40px;
+    .vk-link:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(255, 140, 66, .3);
     }
 
-    .hero{
-      margin-bottom:18px;
-      padding:20px;
-      background:linear-gradient(135deg, rgba(249,211,66,.16), rgba(255,140,66,.10));
-      border-radius:20px;
-      border:1px solid rgba(44,62,80,.06);
+    .vk-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, .22);
     }
 
-    .hero__title{
-      margin:0 0 8px;
-      font-family:'Nunito',sans-serif;
-      font-size:24px;
-      color:var(--title);
-      font-weight:800;
+    /* =====================================================
+       WRAP
+    ===================================================== */
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
     }
 
-    .hero__text{
-      margin:0;
-      color:var(--text);
-      line-height:1.6;
-      max-width:720px;
+    /* =====================================================
+       HERO
+    ===================================================== */
+    .hero {
+      margin-bottom: 18px;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(249, 211, 66, .16), rgba(255, 140, 66, .10));
+      border-radius: 20px;
+      border: 1px solid rgba(44, 62, 80, .06);
     }
 
-    .catalog{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:20px;
+    .hero__title {
+      margin: 0 0 8px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 24px;
+      color: var(--title);
+      font-weight: 800;
     }
 
-    .card{
-      background:var(--card);
-      border-radius:var(--radius);
-      overflow:hidden;
-      box-shadow:var(--shadow);
-      transition:transform .2s ease, box-shadow .2s ease;
-      position:relative;
-      display:flex;
-      flex-direction:column;
+    .hero__text {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 720px;
     }
 
-    .card:hover{
-      transform:scale(1.02);
-      box-shadow:var(--shadowHover);
+    /* =====================================================
+       CATALOG GRID
+    ===================================================== */
+    .catalog {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
     }
 
-    .card__media{
-      position:relative;
-      aspect-ratio:1/1;
-      overflow:hidden;
-      background:#f3f5f7;
-      flex-shrink:0;
+    /* =====================================================
+       CARD
+    ===================================================== */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: transform .2s ease, box-shadow .2s ease;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: var(--shadowHover);
+    }
+
+    .card__media {
+      position: relative;
+      aspect-ratio: 1/1;
+      overflow: hidden;
+      background: #f3f5f7;
+      flex-shrink: 0;
     }
 
     .card__media img,
-    .card__media video{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
+    .card__media video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
-    /* Заглушка для ошибок загрузки изображений */
     .card__media img.error {
-      object-fit:contain;
-      padding:20px;
-      background:#f3f5f7;
+      object-fit: contain;
+      padding: 20px;
+      background: #f3f5f7;
     }
 
-    .badge{
-      position:absolute;
-      top:12px;
-      right:12px;
-      padding:7px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:800;
-      color:#fff;
-      z-index:2;
-      backdrop-filter:blur(4px);
+    /* =====================================================
+       BADGE
+    ===================================================== */
+    .badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      z-index: 2;
+      backdrop-filter: blur(4px);
     }
 
-    .badge--available{background:var(--green)}
-    .badge--rented{background:var(--red)}
-    .badge--soon{background:var(--gray)}
+    .badge--available { background: var(--green); }
+    .badge--rented { background: var(--red); }
+    .badge--soon { background: var(--gray); }
 
-    .card__body{
-      padding:14px 14px 16px;
-      flex:1;
-      display:flex;
-      flex-direction:column;
+    /* =====================================================
+       CARD BODY
+    ===================================================== */
+    .card__body {
+      padding: 14px 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
-    .card__title{
-      margin:0 0 6px;
-      font-size:16px;
-      line-height:1.35;
-      color:var(--title);
-      font-weight:700;
+    .card__title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      line-height: 1.35;
+      color: var(--title);
+      font-weight: 700;
     }
 
-    .card__description{
-      font-size:14px;
-      color:#666;
-      line-height:1.5;
-      margin:4px 0 8px;
-      flex:1;
-      display:-webkit-box;
-      -webkit-line-clamp:3;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
+    .card__description {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+      margin: 4px 0 8px;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    .card__rent-dates{
-      font-size:13px;
-      color:#555;
-      margin-top:6px;
-      padding:6px 10px;
-      background:#f8f6f0;
-      border-radius:8px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
+    .card__rent-dates {
+      font-size: 13px;
+      color: #555;
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: #f8f6f0;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .card__rent-dates .days{
-      font-weight:700;
-      color:var(--accent2);
+    .card__rent-dates .days {
+      font-weight: 700;
+      color: var(--accent2);
     }
 
-    .empty-catalog{
-      grid-column:1/-1;
-      text-align:center;
-      padding:60px 20px;
-      color:#888;
+    .card__price {
+      margin-top: 6px;
+      font-weight: 700;
+      color: var(--accent2);
+      font-size: 14px;
     }
 
-    .empty-catalog h3{
-      color:var(--title);
-      margin-bottom:10px;
+    /* =====================================================
+       EMPTY STATE
+    ===================================================== */
+    .empty-catalog {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
     }
 
-    .footer{
-      background:#2C3E50;
-      color:#fff;
-      margin-top:12px;
+    .empty-catalog h3 {
+      color: var(--title);
+      margin-bottom: 10px;
     }
 
-    .footer__inner{
-      max-width:1280px;
-      margin:0 auto;
-      padding:26px 20px;
-      display:grid;
-      gap:10px;
+    .loading {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px;
+      color: #888;
     }
 
-    .footer__line{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-size:15px;
-      opacity:.98;
+    /* =====================================================
+       FOOTER
+    ===================================================== */
+    .footer {
+      background: #2C3E50;
+      color: #fff;
+      margin-top: 12px;
     }
 
-    .footer__contacts{
-      margin-top:8px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
+    .footer__inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 26px 20px;
+      display: grid;
+      gap: 10px;
     }
 
-    .footer__phone{
-      font-size:22px;
-      font-weight:800;
-      color:#fff;
+    .footer__line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      opacity: .98;
     }
 
-    .loading{
-      grid-column:1/-1;
-      text-align:center;
-      padding:40px;
-      color:#888;
+    .footer__contacts {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    @media (max-width:1100px){
-      .catalog{grid-template-columns:repeat(2,1fr)}
-      h1{font-size:30px}
+    .footer__phone {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
     }
 
-    @media (max-width:720px){
-      .header__inner{
-        flex-direction:column;
-        align-items:flex-start;
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+    @media (max-width: 1100px) {
+      .catalog { grid-template-columns: repeat(2, 1fr); }
+      h1 { font-size: 30px; }
+    }
+
+    @media (max-width: 720px) {
+      .header__inner {
+        flex-direction: column;
+        align-items: flex-start;
       }
 
-      h1{
-        font-size:24px;
+      h1 {
+        font-size: 24px;
       }
 
-      .catalog{
-        grid-template-columns:1fr;
+      .catalog {
+        grid-template-columns: 1fr;
       }
 
-      .wrap{
-        padding:18px 14px 30px;
+      .wrap {
+        padding: 18px 14px 30px;
       }
 
-      .card__media{
-        aspect-ratio:1/1;
+      .card__media {
+        aspect-ratio: 1/1;
       }
 
-      .footer__phone{
-        font-size:20px;
+      .footer__phone {
+        font-size: 20px;
       }
     }
   </style>
 </head>
 <body>
+
   <header class="header">
     <div class="header__inner">
       <h1>Прокат игрушек и товаров для детей ▏Астрахань</h1>
@@ -376,6 +428,7 @@
         rented: "В прокате",
         soon: "Скоро"
       };
+
       const statusBadgeClass = {
         available: "badge--available",
         rented: "badge--rented",
@@ -426,12 +479,25 @@
           const start = new Date(item.rentStart);
           const end = new Date(item.rentEnd);
           const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+          
           if (days > 0) {
+            let priceHtml = "";
+            const price14 = item.rentPrice14 || 0;
+            const price30 = item.rentPrice30 || 0;
+            
+            if (price14 > 0 || price30 > 0) {
+              priceHtml = `<div class="card__price">`;
+              if (price14 > 0) priceHtml += `14 дней: ${price14}₽ `;
+              if (price30 > 0) priceHtml += `30 дней: ${price30}₽`;
+              priceHtml += `</div>`;
+            }
+
             rentHtml = `
               <div class="card__rent-dates">
                 <span>📅 ${formatDate(item.rentStart)} — ${formatDate(item.rentEnd)}</span>
                 <span class="days">${days} ${getDaysWord(days)}</span>
               </div>
+              ${priceHtml}
             `;
           }
         }
@@ -443,7 +509,7 @@
         return `
           <article class="card">
             <div class="card__media">
-              <span class="badge ${statusBadgeClass[item.status] || "badge--soon"}">${statusName[item.status] || item.status}</span>
+              <span class="badge ${statusBadgeClass[item.status] || 'badge--soon'}">${statusName[item.status] || item.status}</span>
               ${mediaHtml}
             </div>
             <div class="card__body">
@@ -493,5 +559,6 @@
       loadCatalog();
     })();
   </script>
+
 </body>
 </html>

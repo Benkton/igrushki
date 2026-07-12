@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 5.1 (исправлены CRUD операции)
+    Версия 6.0 (добавлены настройки аренды: 2 недели и месяц)
 =========================================================*/
 
 "use strict";
@@ -31,7 +31,7 @@ const LOGIN_KEY = "toy_admin";
 
 let catalog = [];
 let selectedFile = null;
-let editId = null; // Хранит firebaseId товара для редактирования
+let editId = null;
 
 /*=========================================================
     SHORTCUT
@@ -44,41 +44,46 @@ const $ = id => document.getElementById(id);
 =========================================================*/
 
 const ui = {
-    login         : $("loginSection"),
-    admin         : $("adminSection"),
-    loginBtn      : $("loginBtn"),
-    logoutBtn     : $("logoutBtn"),
-    loginInput    : $("loginInput"),
-    passwordInput : $("passwordInput"),
-    form          : $("addForm"),
-    fileInput     : $("mediaFile"),
-    chooseBtn     : $("chooseFile"),
-    uploadArea    : $("uploadArea"),
-    preview       : $("previewMedia"),
-    previewBox    : $("previewBox"),
-    search        : $("searchInput"),
-    filter        : $("filterStatus"),
-    sort          : $("sortItems"),
-    list          : $("adminList"),
-    toast         : $("toast"),
-    total         : $("totalItems"),
-    available     : $("availableItems"),
-    rented        : $("rentedItems"),
-    soon          : $("soonItems"),
-    count         : $("catalogCount"),
-    editModal     : $("editModal"),
-    editForm      : $("editForm"),
-    editName      : $("editName"),
-    editStatus    : $("editStatus"),
+    login          : $("loginSection"),
+    admin          : $("adminSection"),
+    loginBtn       : $("loginBtn"),
+    logoutBtn      : $("logoutBtn"),
+    loginInput     : $("loginInput"),
+    passwordInput  : $("passwordInput"),
+    form           : $("addForm"),
+    fileInput      : $("mediaFile"),
+    chooseBtn      : $("chooseFile"),
+    uploadArea     : $("uploadArea"),
+    preview        : $("previewMedia"),
+    previewBox     : $("previewBox"),
+    search         : $("searchInput"),
+    filter         : $("filterStatus"),
+    sort           : $("sortItems"),
+    list           : $("adminList"),
+    toast          : $("toast"),
+    total          : $("totalItems"),
+    available      : $("availableItems"),
+    rented         : $("rentedItems"),
+    soon           : $("soonItems"),
+    count          : $("catalogCount"),
+    editModal      : $("editModal"),
+    editForm       : $("editForm"),
+    editName       : $("editName"),
+    editStatus     : $("editStatus"),
     editDescription: $("editDescription"),
-    editFile      : $("editFile"),
-    editRentStart : $("editRentStart"),
-    editRentEnd   : $("editRentEnd"),
-    closeEdit     : $("closeEdit"),
-    rentStart     : $("rentStart"),
-    rentEnd       : $("rentEnd"),
-    rentedWrap    : $("rentedWrap"),
-    itemDescription: $("itemDescription")
+    editFile       : $("editFile"),
+    editRentStart  : $("editRentStart"),
+    editRentEnd    : $("editRentEnd"),
+    editRentPrice14: $("editRentPrice14"),
+    editRentPrice30: $("editRentPrice30"),
+    closeEdit      : $("closeEdit"),
+    rentStart      : $("rentStart"),
+    rentEnd        : $("rentEnd"),
+    rentPrice14    : $("rentPrice14"),
+    rentPrice30    : $("rentPrice30"),
+    rentedWrap     : $("rentedWrap"),
+    itemDescription: $("itemDescription"),
+    itemStatus     : $("itemStatus")
 };
 
 /*=========================================================
@@ -209,6 +214,11 @@ function truncateText(text, maxLength) {
     return text.slice(0, maxLength) + "...";
 }
 
+function formatPrice(price) {
+    if (!price || price === 0) return "—";
+    return price + " ₽";
+}
+
 /*=========================================================
     TOGGLE RENT DATES
 =========================================================*/
@@ -220,10 +230,12 @@ function toggleRentDates(status) {
         ui.rentedWrap.classList.add("hidden");
         ui.rentStart.value = "";
         ui.rentEnd.value = "";
+        ui.rentPrice14.value = "";
+        ui.rentPrice30.value = "";
     }
 }
 
-$("itemStatus").addEventListener("change", function() {
+ui.itemStatus.addEventListener("change", function() {
     toggleRentDates(this.value);
 });
 
@@ -235,6 +247,8 @@ ui.editStatus.addEventListener("change", function() {
         wrap.classList.add("hidden");
         ui.editRentStart.value = "";
         ui.editRentEnd.value = "";
+        ui.editRentPrice14.value = "";
+        ui.editRentPrice30.value = "";
     }
 });
 
@@ -317,7 +331,7 @@ function loadCatalog() {
           snapshot.forEach((doc) => {
               catalog.push({ 
                   firebaseId: doc.id, 
-                  id: generateId(), // Уникальный ID для локального использования
+                  id: generateId(),
                   ...doc.data() 
               });
           });
@@ -341,10 +355,12 @@ async function addItem(e) {
         return;
     }
 
-    const status = $("itemStatus").value;
+    const status = ui.itemStatus.value;
     const description = ui.itemDescription.value.trim();
     const rentStart = ui.rentStart.value;
     const rentEnd = ui.rentEnd.value;
+    const price14 = parseInt(ui.rentPrice14.value) || 0;
+    const price30 = parseInt(ui.rentPrice30.value) || 0;
 
     if (status === "rented") {
         if (!rentStart || !rentEnd) {
@@ -357,6 +373,10 @@ async function addItem(e) {
             toast("Дата окончания должна быть позже даты начала");
             return;
         }
+        if (price14 === 0 && price30 === 0) {
+            toast("Укажите цену хотя бы для одного варианта аренды");
+            return;
+        }
     }
 
     const newItem = {
@@ -365,6 +385,8 @@ async function addItem(e) {
         status: status,
         rentStart: status === "rented" ? rentStart : "",
         rentEnd: status === "rented" ? rentEnd : "",
+        rentPrice14: status === "rented" ? price14 : 0,
+        rentPrice30: status === "rented" ? price30 : 0,
         media: await toBase64(selectedFile),
         mediaType: selectedFile.type.startsWith("video") ? "video" : "image",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -376,6 +398,8 @@ async function addItem(e) {
         clearPreview();
         ui.rentedWrap.classList.add("hidden");
         ui.itemDescription.value = "";
+        ui.rentPrice14.value = "";
+        ui.rentPrice30.value = "";
         toast("Товар добавлен");
     } catch (error) {
         console.error("Ошибка добавления:", error);
@@ -385,7 +409,6 @@ async function addItem(e) {
 
 ui.form.addEventListener("submit", addItem);
 
-// Удаление товара по firebaseId
 async function deleteItem(firebaseId) {
     const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
@@ -400,7 +423,6 @@ async function deleteItem(firebaseId) {
     }
 }
 
-// Обновление товара по firebaseId
 async function updateItem(firebaseId, data) {
     try {
         await db.collection("catalog").doc(firebaseId).update(data);
@@ -411,7 +433,6 @@ async function updateItem(firebaseId, data) {
     }
 }
 
-// Копирование товара по firebaseId
 async function copyItem(firebaseId) {
     const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
@@ -422,6 +443,8 @@ async function copyItem(firebaseId) {
         status: item.status,
         rentStart: item.rentStart || "",
         rentEnd: item.rentEnd || "",
+        rentPrice14: item.rentPrice14 || 0,
+        rentPrice30: item.rentPrice30 || 0,
         media: item.media,
         mediaType: item.mediaType || "image",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -460,7 +483,6 @@ function getVisibleItems() {
         arr = arr.filter(item => item.status === filterVal);
     }
 
-    // Сортируем по локальному ID (числовому)
     switch (ui.sort.value) {
         case "name":
             arr.sort((a, b) => a.name.localeCompare(b.name));
@@ -495,10 +517,26 @@ function createCard(item) {
     let rentInfo = "";
     if (item.status === "rented" && item.rentStart && item.rentEnd) {
         const days = getRentalDays(item.rentStart, item.rentEnd);
+        const price14 = item.rentPrice14 || 0;
+        const price30 = item.rentPrice30 || 0;
+        
+        let priceHtml = "";
+        if (price14 > 0 || price30 > 0) {
+            priceHtml = `<div class="admin-card__price">`;
+            if (price14 > 0) {
+                priceHtml += `14 дней: ${price14} ₽ `;
+            }
+            if (price30 > 0) {
+                priceHtml += `30 дней: ${price30} ₽`;
+            }
+            priceHtml += `</div>`;
+        }
+        
         rentInfo = `
             <div style="margin-top: 8px; font-size: 13px; color: #555;">
                 <div>📅 ${formatDate(item.rentStart)} → ${formatDate(item.rentEnd)}</div>
                 <div style="font-weight: 600; color: var(--accent2);">${days} ${getDaysWord(days)}</div>
+                ${priceHtml}
             </div>
         `;
     }
@@ -586,13 +624,15 @@ function openEditor(firebaseId) {
     const item = getItemByFirebaseId(firebaseId);
     if (!item) return;
     
-    editId = firebaseId; // Сохраняем firebaseId для редактирования
+    editId = firebaseId;
     
     ui.editName.value = item.name;
     ui.editStatus.value = item.status;
     ui.editDescription.value = item.description || "";
     ui.editRentStart.value = item.rentStart || "";
     ui.editRentEnd.value = item.rentEnd || "";
+    ui.editRentPrice14.value = item.rentPrice14 || "";
+    ui.editRentPrice30.value = item.rentPrice30 || "";
     ui.editFile.value = "";
 
     const wrap = document.getElementById("editRentWrap");
@@ -632,6 +672,9 @@ ui.editForm.addEventListener("submit", async e => {
     if (data.status === "rented") {
         const start = ui.editRentStart.value;
         const end = ui.editRentEnd.value;
+        const price14 = parseInt(ui.editRentPrice14.value) || 0;
+        const price30 = parseInt(ui.editRentPrice30.value) || 0;
+        
         if (!start || !end) {
             toast("Укажите даты начала и окончания аренды");
             return;
@@ -640,11 +683,20 @@ ui.editForm.addEventListener("submit", async e => {
             toast("Дата окончания должна быть позже даты начала");
             return;
         }
+        if (price14 === 0 && price30 === 0) {
+            toast("Укажите цену хотя бы для одного варианта аренды");
+            return;
+        }
+        
         data.rentStart = start;
         data.rentEnd = end;
+        data.rentPrice14 = price14;
+        data.rentPrice30 = price30;
     } else {
         data.rentStart = "";
         data.rentEnd = "";
+        data.rentPrice14 = 0;
+        data.rentPrice30 = 0;
     }
 
     if (ui.editFile.files.length) {

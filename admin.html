@@ -47,6 +47,83 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        /* Стили для цены и вариантов аренды */
+        .rent-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid #e9ecef;
+        }
+        .rent-option {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .rent-option label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--title);
+        }
+        .rent-option .price-input {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rent-option .price-input input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #dfe5ec;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .rent-option .price-input span {
+            font-weight: 700;
+            color: var(--title);
+            font-size: 14px;
+        }
+        .rent-option .period-label {
+            font-size: 12px;
+            color: #888;
+            font-weight: 400;
+        }
+        .rent-options-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--title);
+            margin-bottom: 8px;
+        }
+        .admin-card__price {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent2);
+            margin: 6px 0;
+        }
+        .admin-card__rent-period {
+            font-size: 13px;
+            color: #666;
+            margin: 2px 0;
+        }
+        .edit-rent-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .edit-rent-options .field {
+            gap: 4px;
+        }
+        .edit-rent-options .field label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .edit-rent-options .field input {
+            padding: 10px 12px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body data-page="admin">
@@ -165,15 +242,33 @@
                     <label for="itemDescription">Описание товара</label>
                     <textarea id="itemDescription" placeholder="Краткое описание товара (до 300 символов)"></textarea>
                 </div>
-                <div class="field hidden" id="rentedWrap">
-                    <label>Период аренды</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="field hidden" id="rentedWrap" style="grid-column: 1 / -1;">
+                    <label>Настройка аренды</label>
+                    <div class="rent-options">
+                        <div class="rent-option">
+                            <label>📅 2 недели (14 дней)</label>
+                            <div class="price-input">
+                                <input id="rentPrice14" type="number" placeholder="0" min="0" step="50">
+                                <span>₽</span>
+                            </div>
+                            <span class="period-label">Цена за 14 дней аренды</span>
+                        </div>
+                        <div class="rent-option">
+                            <label>📅 1 месяц (30 дней)</label>
+                            <div class="price-input">
+                                <input id="rentPrice30" type="number" placeholder="0" min="0" step="50">
+                                <span>₽</span>
+                            </div>
+                            <span class="period-label">Цена за 30 дней аренды</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
-                            <label style="font-weight: 400; font-size: 13px;">С</label>
+                            <label style="font-weight: 400; font-size: 13px;">Дата начала</label>
                             <input id="rentStart" type="date">
                         </div>
                         <div>
-                            <label style="font-weight: 400; font-size: 13px;">По</label>
+                            <label style="font-weight: 400; font-size: 13px;">Дата окончания</label>
                             <input id="rentEnd" type="date">
                         </div>
                     </div>
@@ -231,14 +326,24 @@
                 <textarea id="editDescription" placeholder="Краткое описание товара"></textarea>
             </div>
             <div class="field" id="editRentWrap">
-                <label>Период аренды</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <label>Настройка аренды</label>
+                <div class="edit-rent-options">
+                    <div class="field">
+                        <label>2 недели (14 дней)</label>
+                        <input id="editRentPrice14" type="number" placeholder="Цена" min="0" step="50">
+                    </div>
+                    <div class="field">
+                        <label>1 месяц (30 дней)</label>
+                        <input id="editRentPrice30" type="number" placeholder="Цена" min="0" step="50">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
                     <div>
-                        <label style="font-weight: 400; font-size: 13px;">С</label>
+                        <label style="font-weight: 400; font-size: 13px;">Дата начала</label>
                         <input id="editRentStart" type="date">
                     </div>
                     <div>
-                        <label style="font-weight: 400; font-size: 13px;">По</label>
+                        <label style="font-weight: 400; font-size: 13px;">Дата окончания</label>
                         <input id="editRentEnd" type="date">
                     </div>
                 </div>
