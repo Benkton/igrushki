@@ -223,6 +223,19 @@
       color: var(--accent2);
     }
 
+    .card__rent-dates {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #555;
+      background: #f8f6f0;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+    .card__rent-dates .days {
+      font-weight: 600;
+      color: var(--accent2);
+    }
+
     .card__rent-btn {
       margin-top: 10px;
       padding: 10px 16px;
@@ -243,6 +256,7 @@
     .card__rent-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      transform: none;
     }
 
     .empty-catalog {
@@ -565,6 +579,7 @@
 
       let currentItem = null;
       let toastTimer = null;
+      let itemsCache = [];
 
       function showToast(text, type) {
         toastEl.textContent = text;
@@ -593,6 +608,36 @@
         if (!text) return "";
         if (text.length <= maxLength) return text;
         return text.slice(0, maxLength) + "...";
+      }
+
+      function formatDateShort(dateStr) {
+        if (!dateStr) return "";
+        if (typeof dateStr === 'string') {
+          const parts = dateStr.split("-");
+          if (parts.length === 3) {
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+          }
+          return dateStr;
+        }
+        const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
+        return date.toLocaleDateString('ru-RU');
+      }
+
+      function getDaysWord(days) {
+        const lastDigit = days % 10;
+        const lastTwo = days % 100;
+        if (lastTwo >= 11 && lastTwo <= 14) return "дней";
+        if (lastDigit === 1) return "день";
+        if (lastDigit >= 2 && lastDigit <= 4) return "дня";
+        return "дней";
+      }
+
+      function getRentalDays(startDate, endDate) {
+        if (!startDate || !endDate) return 0;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        return diff > 0 ? diff : 0;
       }
 
       function createCard(item) {
@@ -625,11 +670,23 @@
           priceHtml += `</div>`;
         }
 
+        // Отображаем даты аренды, если товар в прокате
+        let rentDatesHtml = "";
+        if (item.status === "rented" && item.rentStart && item.rentEnd) {
+          const days = getRentalDays(item.rentStart, item.rentEnd);
+          rentDatesHtml = `
+            <div class="card__rent-dates">
+              <div>📅 ${formatDateShort(item.rentStart)} → ${formatDateShort(item.rentEnd)}</div>
+              <div class="days">${days} ${getDaysWord(days)}</div>
+            </div>
+          `;
+        }
+
         const descriptionHtml = item.description 
           ? `<div class="card__description">${truncateText(item.description, 120)}</div>`
           : "";
 
-        // Передаем весь объект item в data-атрибут
+        // Кнопка бронирования только для товаров в наличии
         const rentBtn = item.status === "available" 
           ? `<button class="card__rent-btn" data-item-id="${item.firebaseId || item.id || ''}">🎯 Забронировать</button>`
           : '';
@@ -644,6 +701,7 @@
               <h2 class="card__title">${item.name}</h2>
               ${descriptionHtml}
               ${priceHtml}
+              ${rentDatesHtml}
               ${rentBtn}
             </div>
           </article>
@@ -667,8 +725,7 @@
           btn.addEventListener('click', function() {
             const card = this.closest('.card');
             const itemId = card.dataset.itemId;
-            // Находим товар по ID в массиве items
-            const item = items.find(i => (i.firebaseId || i.id) === itemId);
+            const item = itemsCache.find(i => (i.firebaseId || i.id) === itemId);
             if (item) {
               openRentModal(item);
             } else {
@@ -759,15 +816,18 @@
 
           console.log('📤 Отправка заявки:', orderData);
 
-          const docRef = await db.collection('orders').add(orderData);
-          console.log('✅ Заявка создана, ID:', docRef.id);
+          await db.collection('orders').add(orderData);
           
           showToast('✅ Заявка отправлена! Ожидайте подтверждения', 'success');
           closeModal();
           
         } catch (error) {
           console.error('❌ Ошибка отправки:', error);
-          showToast('❌ Ошибка отправки. Попробуйте позже', 'error');
+          if (error.code === 'permission-denied') {
+            showToast('❌ Ошибка доступа к базе данных. Обратитесь к администратору.', 'error');
+          } else {
+            showToast('❌ Ошибка отправки. Попробуйте позже', 'error');
+          }
         }
 
         this.disabled = false;
@@ -775,8 +835,6 @@
       });
 
       // Загрузка каталога
-      let itemsCache = [];
-
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         

@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 9.0 (заявки на аренду без SMS)
+    Версия 10.0 (автоматическое обновление статуса и дат)
 =========================================================*/
 
 "use strict";
@@ -191,15 +191,60 @@ function truncateText(text, maxLength) {
     return text.slice(0, maxLength) + "...";
 }
 
-function formatDate(timestamp) {
-    if (!timestamp) return "—";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+function formatDate(dateStr) {
+    if (!dateStr) return "—";
+    // Если пришла строка
+    if (typeof dateStr === 'string') {
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return dateStr;
+    }
+    // Если пришел timestamp или Date
+    const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
     return date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return "—";
+    if (typeof dateStr === 'string') {
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return dateStr;
+    }
+    const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
+    return date.toLocaleDateString('ru-RU');
+}
+
+function getRentalDays(startDate, endDate) {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+}
+
+function getDaysWord(days) {
+    const lastDigit = days % 10;
+    const lastTwo = days % 100;
+    if (lastTwo >= 11 && lastTwo <= 14) return "дней";
+    if (lastDigit === 1) return "день";
+    if (lastDigit >= 2 && lastDigit <= 4) return "дня";
+    return "дней";
 }
 
 function formatPrice(price) {
     if (!price || price === 0) return "—";
     return price + " ₽";
+}
+
+function getRentEndDate(startDate, days) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
 }
 
 /*=========================================================
@@ -321,6 +366,8 @@ async function addItem(e) {
         status: status,
         rentPrice14: price14,
         rentPrice30: price30,
+        rentStart: "",
+        rentEnd: "",
         media: await toBase64(selectedFile),
         mediaType: selectedFile.type.startsWith("video") ? "video" : "image",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -376,6 +423,8 @@ async function copyItem(firebaseId) {
         status: item.status,
         rentPrice14: item.rentPrice14 || 0,
         rentPrice30: item.rentPrice30 || 0,
+        rentStart: "",
+        rentEnd: "",
         media: item.media,
         mediaType: item.mediaType || "image",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -412,26 +461,99 @@ function loadOrders() {
       });
 }
 
+/*=========================================================
+    ПОДТВЕРЖДЕНИЕ ЗАЯВКИ (с обновлением товара)
+=========================================================*/
+
 async function confirmOrder(orderId) {
     try {
+        // Находим заявку
+        const order = orders.find(o => o.orderId === orderId);
+        if (!order) {
+            toast("Ошибка: заявка не найдена");
+            return;
+        }
+
+        // Находим товар
+        const item = catalog.find(i => i.firebaseId === order.itemId);
+        if (!item) {
+            toast("Ошибка: товар не найден");
+            return;
+        }
+
+        // Рассчитываем дату окончания аренды
+        const today = new Date();
+        const days = order.rentOption === "14" ? 14 : 30;
+        const endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + days);
+        
+        const rentStart = today.toISOString().split('T')[0];
+        const rentEnd = endDate.toISOString().split('T')[0];
+
+        // Обновляем товар: меняем статус и добавляем даты
+        await db.collection("catalog").doc(item.firebaseId).update({
+            status: "rented",
+            rentStart: rentStart,
+            rentEnd: rentEnd
+        });
+
+        // Обновляем заявку
         await db.collection("orders").doc(orderId).update({
             status: "confirmed",
             confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        toast("✅ Заявка подтверждена");
+
+        toast(`✅ Заявка подтверждена! Товар "${item.name}" в прокате до ${formatDateShort(rentEnd)}`);
+        
     } catch (error) {
         console.error("Ошибка подтверждения:", error);
         toast("Ошибка подтверждения заявки");
     }
 }
 
+/*=========================================================
+    ОТКЛОНЕНИЕ ЗАЯВКИ
+=========================================================*/
+
 async function cancelOrder(orderId) {
     try {
+        // Находим заявку
+        const order = orders.find(o => o.orderId === orderId);
+        if (!order) {
+            toast("Ошибка: заявка не найдена");
+            return;
+        }
+
+        // Находим товар
+        const item = catalog.find(i => i.firebaseId === order.itemId);
+        
+        // Обновляем заявку
         await db.collection("orders").doc(orderId).update({
             status: "cancelled",
             cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        // Если товар был в статусе "rented" (если админ случайно отклонил после подтверждения),
+        // возвращаем его в "available"
+        if (item && item.status === "rented" && item.rentStart) {
+            // Проверяем, не был ли товар сдан в аренду по другой заявке
+            const otherActiveOrders = orders.filter(o => 
+                o.itemId === order.itemId && 
+                o.status === "confirmed" && 
+                o.orderId !== orderId
+            );
+            
+            if (otherActiveOrders.length === 0) {
+                await db.collection("catalog").doc(item.firebaseId).update({
+                    status: "available",
+                    rentStart: "",
+                    rentEnd: ""
+                });
+            }
+        }
+
         toast("❌ Заявка отклонена");
+        
     } catch (error) {
         console.error("Ошибка отклонения:", error);
         toast("Ошибка отклонения заявки");
@@ -511,6 +633,18 @@ function createCard(item) {
         priceHtml += `</div>`;
     }
 
+    // Отображаем даты аренды, если товар в прокате
+    let rentDatesHtml = "";
+    if (item.status === "rented" && item.rentStart && item.rentEnd) {
+        const days = getRentalDays(item.rentStart, item.rentEnd);
+        rentDatesHtml = `
+            <div style="margin-top: 6px; font-size: 13px; color: #555; background: #f8f6f0; padding: 6px 10px; border-radius: 8px;">
+                <div>📅 ${formatDateShort(item.rentStart)} → ${formatDateShort(item.rentEnd)}</div>
+                <div style="font-weight: 600; color: var(--accent2);">${days} ${getDaysWord(days)}</div>
+            </div>
+        `;
+    }
+
     const descriptionHtml = item.description 
         ? `<div class="admin-card__description">${truncateText(item.description, 100)}</div>`
         : "";
@@ -523,6 +657,7 @@ function createCard(item) {
                 ${descriptionHtml}
                 <p class="${statusClass[item.status]}">${statusName[item.status]}</p>
                 ${priceHtml}
+                ${rentDatesHtml}
                 <div class="admin-actions" style="margin-top: 12px;">
                     <button class="editBtn" data-firebase-id="${item.firebaseId}">✏️ Редактировать</button>
                     <button class="copyBtn" data-firebase-id="${item.firebaseId}">📄 Копировать</button>
@@ -702,6 +837,12 @@ ui.editForm.addEventListener("submit", async e => {
         rentPrice14: price14,
         rentPrice30: price30
     };
+
+    // Если меняем статус на "available" или "soon" — очищаем даты
+    if (data.status !== "rented") {
+        data.rentStart = "";
+        data.rentEnd = "";
+    }
 
     if (ui.editFile.files.length) {
         const file = ui.editFile.files[0];
