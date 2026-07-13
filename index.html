@@ -445,6 +445,12 @@
       background: #2ECC71;
     }
 
+    /* Анимация обновления */
+    .card-updating {
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+
     @media (max-width: 1100px) {
       .catalog { grid-template-columns: repeat(2, 1fr); }
       h1 { font-size: 30px; }
@@ -566,6 +572,15 @@
       
       const db = firebase.firestore();
 
+      // Настройка Firestore для работы в офлайн-режиме
+      db.enablePersistence()
+        .then(() => {
+          console.log('✅ Офлайн-режим включен');
+        })
+        .catch((err) => {
+          console.warn('⚠️ Офлайн-режим не работает:', err);
+        });
+
       const catalogContainer = document.getElementById("catalogContainer");
       const rentModal = document.getElementById("rentModal");
       const closeRentModal = document.getElementById("closeRentModal");
@@ -580,6 +595,7 @@
       let currentItem = null;
       let toastTimer = null;
       let itemsCache = [];
+      let unsubscribe = null;
 
       function showToast(text, type) {
         toastEl.textContent = text;
@@ -692,7 +708,7 @@
           : '';
 
         return `
-          <article class="card" data-item-id="${item.firebaseId || item.id || ''}">
+          <article class="card" data-item-id="${item.firebaseId || item.id || ''}" data-status="${item.status}">
             <div class="card__media">
               <span class="badge ${statusBadgeClass[item.status] || 'badge--soon'}">${statusName[item.status] || item.status}</span>
               ${mediaHtml}
@@ -834,12 +850,19 @@
         this.textContent = '📩 Отправить заявку';
       });
 
-      // Загрузка каталога
+      // Загрузка каталога с реальным обновлением
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         
+        // Отписываемся от предыдущего слушателя, если он был
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
+        
         try {
-          db.collection("catalog")
+          // Используем onSnapshot для реального обновления данных
+          unsubscribe = db.collection("catalog")
             .orderBy("createdAt", "desc")
             .onSnapshot((snapshot) => {
               const items = [];
@@ -849,8 +872,18 @@
                   ...doc.data() 
                 });
               });
-              itemsCache = items;
-              renderCatalog(items);
+              
+              // Проверяем, изменились ли данные
+              const changed = JSON.stringify(items) !== JSON.stringify(itemsCache);
+              if (changed) {
+                console.log('🔄 Данные обновлены, товаров:', items.length);
+                itemsCache = items;
+                renderCatalog(items);
+              } else if (itemsCache.length === 0) {
+                // Первая загрузка
+                itemsCache = items;
+                renderCatalog(items);
+              }
             }, (error) => {
               console.error("Ошибка загрузки:", error);
               catalogContainer.innerHTML = `
@@ -873,6 +906,44 @@
       }
 
       loadCatalog();
+
+      // Добавляем кнопку ручного обновления для пользователей
+      const refreshBtn = document.createElement('button');
+      refreshBtn.innerHTML = '🔄 Обновить';
+      refreshBtn.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        padding: 12px 18px;
+        border: none;
+        border-radius: 50px;
+        background: var(--accent2);
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: var(--shadowHover);
+        z-index: 100;
+        transition: .2s;
+      `;
+      refreshBtn.addEventListener('mouseenter', () => {
+        refreshBtn.style.transform = 'scale(1.05)';
+      });
+      refreshBtn.addEventListener('mouseleave', () => {
+        refreshBtn.style.transform = 'scale(1)';
+      });
+      refreshBtn.addEventListener('click', () => {
+        showToast('🔄 Обновление...', '');
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
+        loadCatalog();
+        setTimeout(() => {
+          showToast('✅ Каталог обновлен', 'success');
+        }, 500);
+      });
+      document.body.appendChild(refreshBtn);
 
     })();
   </script>
