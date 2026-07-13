@@ -445,10 +445,27 @@
       background: #2ECC71;
     }
 
-    /* Анимация обновления */
-    .card-updating {
-      opacity: 0.5;
-      transition: opacity 0.3s;
+    .refresh-btn {
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 50px;
+      background: var(--accent2);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: var(--shadowHover);
+      z-index: 100;
+      transition: .2s;
+    }
+    .refresh-btn:hover {
+      transform: scale(1.05);
+    }
+    .refresh-btn:active {
+      transform: scale(0.95);
     }
 
     @media (max-width: 1100px) {
@@ -467,6 +484,12 @@
       .card__media { aspect-ratio: 1/1; }
       .footer__phone { font-size: 20px; }
       .modal-box { padding: 24px; margin: 10px; }
+      .refresh-btn {
+        bottom: 80px;
+        right: 10px;
+        padding: 10px 14px;
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -556,7 +579,7 @@
         appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
       };
 
-      // Инициализация Firebase с обработкой ошибок
+      // Инициализация Firebase
       try {
         firebase.initializeApp(firebaseConfig);
       } catch (e) {
@@ -570,16 +593,18 @@
         return;
       }
       
+      // Настройка Firestore с кешированием (новый способ)
       const db = firebase.firestore();
-
-      // Настройка Firestore для работы в офлайн-режиме
-      db.enablePersistence()
-        .then(() => {
-          console.log('✅ Офлайн-режим включен');
-        })
-        .catch((err) => {
-          console.warn('⚠️ Офлайн-режим не работает:', err);
+      
+      // Включаем кеширование данных (новый способ без предупреждений)
+      try {
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
         });
+        console.log('✅ Кеширование данных включено');
+      } catch (e) {
+        console.warn('⚠️ Ошибка настройки кеша:', e);
+      }
 
       const catalogContainer = document.getElementById("catalogContainer");
       const rentModal = document.getElementById("rentModal");
@@ -864,7 +889,10 @@
           // Используем onSnapshot для реального обновления данных
           unsubscribe = db.collection("catalog")
             .orderBy("createdAt", "desc")
-            .onSnapshot((snapshot) => {
+            .onSnapshot({
+              // Включаем метаданные для определения источника данных
+              includeMetadataChanges: true
+            }, (snapshot) => {
               const items = [];
               snapshot.forEach((doc) => {
                 items.push({ 
@@ -877,6 +905,9 @@
               const changed = JSON.stringify(items) !== JSON.stringify(itemsCache);
               if (changed) {
                 console.log('🔄 Данные обновлены, товаров:', items.length);
+                // Показываем, откуда пришли данные (кеш или сервер)
+                const fromCache = snapshot.metadata.fromCache;
+                console.log(fromCache ? '📦 Данные из кеша' : '🌐 Данные с сервера');
                 itemsCache = items;
                 renderCatalog(items);
               } else if (itemsCache.length === 0) {
@@ -907,31 +938,10 @@
 
       loadCatalog();
 
-      // Добавляем кнопку ручного обновления для пользователей
+      // Кнопка ручного обновления
       const refreshBtn = document.createElement('button');
+      refreshBtn.className = 'refresh-btn';
       refreshBtn.innerHTML = '🔄 Обновить';
-      refreshBtn.style.cssText = `
-        position: fixed;
-        bottom: 100px;
-        right: 20px;
-        padding: 12px 18px;
-        border: none;
-        border-radius: 50px;
-        background: var(--accent2);
-        color: #fff;
-        font-weight: 700;
-        font-size: 14px;
-        cursor: pointer;
-        box-shadow: var(--shadowHover);
-        z-index: 100;
-        transition: .2s;
-      `;
-      refreshBtn.addEventListener('mouseenter', () => {
-        refreshBtn.style.transform = 'scale(1.05)';
-      });
-      refreshBtn.addEventListener('mouseleave', () => {
-        refreshBtn.style.transform = 'scale(1)';
-      });
       refreshBtn.addEventListener('click', () => {
         showToast('🔄 Обновление...', '');
         if (unsubscribe) {
