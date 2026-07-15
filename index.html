@@ -125,6 +125,64 @@
       max-width: 720px;
     }
 
+    /* Фильтр категорий */
+    .catalog-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .catalog-controls .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid #dfe5ec;
+      font-size: 15px;
+      transition: .2s;
+    }
+    .catalog-controls .search-box:focus {
+      outline: none;
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 4px rgba(255,140,66,.12);
+    }
+    .category-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .category-filter .cat-btn {
+      padding: 6px 16px;
+      border: 2px solid #dfe5ec;
+      border-radius: 20px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: .2s;
+      color: #666;
+      white-space: nowrap;
+    }
+    .category-filter .cat-btn:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+    .category-filter .cat-btn.active {
+      border-color: var(--accent2);
+      background: var(--accent2);
+      color: #fff;
+    }
+    .category-filter .cat-btn.all {
+      border-color: var(--title);
+      color: var(--title);
+    }
+    .category-filter .cat-btn.all.active {
+      background: var(--title);
+      border-color: var(--title);
+      color: #fff;
+    }
+
     .catalog {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -194,11 +252,23 @@
     }
 
     .card__title {
-      margin: 0 0 6px;
+      margin: 0 0 4px;
       font-size: 16px;
       line-height: 1.35;
       color: var(--title);
       font-weight: 700;
+    }
+
+    .card__category {
+      font-size: 12px;
+      color: #1a73e8;
+      background: #e8f0fe;
+      padding: 2px 10px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-bottom: 4px;
+      font-weight: 600;
+      align-self: flex-start;
     }
 
     .card__description {
@@ -490,6 +560,19 @@
         padding: 10px 14px;
         font-size: 12px;
       }
+      .catalog-controls {
+        flex-direction: column;
+      }
+      .catalog-controls .search-box {
+        width: 100%;
+      }
+      .category-filter {
+        gap: 6px;
+      }
+      .category-filter .cat-btn {
+        font-size: 12px;
+        padding: 4px 12px;
+      }
     }
   </style>
 </head>
@@ -513,6 +596,14 @@
         Нажмите "Забронировать" на понравившемся товаре, чтобы оставить заявку.
       </p>
     </section>
+
+    <!-- Управление каталогом -->
+    <div class="catalog-controls">
+      <input class="search-box" id="searchInput" type="text" placeholder="🔍 Поиск по названию или категории...">
+      <div class="category-filter" id="categoryFilter">
+        <button class="cat-btn all active" data-category="all">📂 Все</button>
+      </div>
+    </div>
 
     <section class="catalog" id="catalogContainer">
       <div class="loading">⏳ Загрузка каталога...</div>
@@ -579,7 +670,6 @@
         appId: "1:1085039924771:web:a6334a46ad4dffa1ba4396"
       };
 
-      // Инициализация Firebase
       try {
         firebase.initializeApp(firebaseConfig);
       } catch (e) {
@@ -593,10 +683,8 @@
         return;
       }
       
-      // Настройка Firestore с кешированием (новый способ)
       const db = firebase.firestore();
       
-      // Включаем кеширование данных (новый способ без предупреждений)
       try {
         db.settings({
           cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
@@ -616,11 +704,17 @@
       const rentPriceDisplay = document.getElementById("rentPriceDisplay");
       const submitRentBtn = document.getElementById("submitRentBtn");
       const toastEl = document.getElementById("toast");
+      const searchInput = document.getElementById("searchInput");
+      const categoryFilter = document.getElementById("categoryFilter");
 
       let currentItem = null;
       let toastTimer = null;
       let itemsCache = [];
-      let unsubscribe = null;
+      let categoriesCache = [];
+      let unsubscribeCatalog = null;
+      let unsubscribeCategories = null;
+      let selectedCategory = 'all';
+      let searchQuery = '';
 
       function showToast(text, type) {
         toastEl.textContent = text;
@@ -711,7 +805,6 @@
           priceHtml += `</div>`;
         }
 
-        // Отображаем даты аренды, если товар в прокате
         let rentDatesHtml = "";
         if (item.status === "rented" && item.rentStart && item.rentEnd) {
           const days = getRentalDays(item.rentStart, item.rentEnd);
@@ -723,23 +816,27 @@
           `;
         }
 
+        const categoryHtml = item.category 
+          ? `<span class="card__category">📂 ${item.category}</span>`
+          : "";
+
         const descriptionHtml = item.description 
           ? `<div class="card__description">${truncateText(item.description, 120)}</div>`
           : "";
 
-        // Кнопка бронирования только для товаров в наличии
         const rentBtn = item.status === "available" 
           ? `<button class="card__rent-btn" data-item-id="${item.firebaseId || item.id || ''}">🎯 Забронировать</button>`
           : '';
 
         return `
-          <article class="card" data-item-id="${item.firebaseId || item.id || ''}" data-status="${item.status}">
+          <article class="card" data-item-id="${item.firebaseId || item.id || ''}" data-status="${item.status}" data-category="${item.category || ''}">
             <div class="card__media">
               <span class="badge ${statusBadgeClass[item.status] || 'badge--soon'}">${statusName[item.status] || item.status}</span>
               ${mediaHtml}
             </div>
             <div class="card__body">
               <h2 class="card__title">${item.name}</h2>
+              ${categoryHtml}
               ${descriptionHtml}
               ${priceHtml}
               ${rentDatesHtml}
@@ -750,18 +847,33 @@
       }
 
       function renderCatalog(items) {
-        if (!items || !items.length) {
+        // Фильтруем по категории
+        let filtered = items;
+        if (selectedCategory !== 'all') {
+          filtered = filtered.filter(item => (item.category || '') === selectedCategory);
+        }
+        
+        // Фильтруем по поиску
+        if (searchQuery.trim()) {
+          const query = searchQuery.trim().toLowerCase();
+          filtered = filtered.filter(item => 
+            item.name.toLowerCase().includes(query) ||
+            (item.description && item.description.toLowerCase().includes(query)) ||
+            (item.category && item.category.toLowerCase().includes(query))
+          );
+        }
+
+        if (!filtered || !filtered.length) {
           catalogContainer.innerHTML = `
             <div class="empty-catalog">
-              <h3>Каталог пуст</h3>
-              <p>Загляните позже — мы постоянно обновляем ассортимент.</p>
+              <h3>😕 Ничего не найдено</h3>
+              <p>Попробуйте изменить параметры поиска или категорию.</p>
             </div>
           `;
           return;
         }
-        catalogContainer.innerHTML = items.map(createCard).join("");
+        catalogContainer.innerHTML = filtered.map(createCard).join("");
         
-        // Вешаем обработчики на кнопки бронирования
         document.querySelectorAll('.card__rent-btn').forEach(btn => {
           btn.addEventListener('click', function() {
             const card = this.closest('.card');
@@ -774,6 +886,54 @@
             }
           });
         });
+      }
+
+      function updateCategoryFilter(categories) {
+        // Сохраняем текущую активную категорию
+        const currentActive = categoryFilter.querySelector('.cat-btn.active');
+        const activeCategory = currentActive ? currentActive.dataset.category : 'all';
+        
+        // Очищаем фильтр, оставляя кнопку "Все"
+        categoryFilter.innerHTML = `<button class="cat-btn all ${activeCategory === 'all' ? 'active' : ''}" data-category="all">📂 Все</button>`;
+        
+        // Добавляем кнопки для каждой категории
+        categories.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.className = `cat-btn ${activeCategory === cat.name ? 'active' : ''}`;
+          btn.dataset.category = cat.name;
+          btn.textContent = `📂 ${cat.name}`;
+          categoryFilter.appendChild(btn);
+        });
+
+        // Вешаем обработчики на кнопки
+        categoryFilter.querySelectorAll('.cat-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            categoryFilter.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            selectedCategory = this.dataset.category;
+            renderCatalog(itemsCache);
+          });
+        });
+      }
+
+      function loadCategories() {
+        if (unsubscribeCategories) {
+          unsubscribeCategories();
+          unsubscribeCategories = null;
+        }
+        
+        unsubscribeCategories = db.collection("categories")
+          .orderBy("name")
+          .onSnapshot((snapshot) => {
+            const cats = [];
+            snapshot.forEach((doc) => {
+              cats.push({ id: doc.id, ...doc.data() });
+            });
+            categoriesCache = cats;
+            updateCategoryFilter(cats);
+          }, (error) => {
+            console.error("Ошибка загрузки категорий:", error);
+          });
       }
 
       function openRentModal(item) {
@@ -811,13 +971,11 @@
         if (e.key === 'Escape') closeModal();
       });
 
-      // Отправка заявки
       submitRentBtn.addEventListener('click', async function() {
         const name = rentUserName.value.trim();
         const phone = rentUserPhone.value.trim();
         const period = parseInt(rentPeriod.value);
         
-        // Валидация
         if (!name) {
           showToast('Введите ваше имя', 'error');
           rentUserName.focus();
@@ -855,8 +1013,6 @@
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
 
-          console.log('📤 Отправка заявки:', orderData);
-
           await db.collection('orders').add(orderData);
           
           showToast('✅ Заявка отправлена! Ожидайте подтверждения', 'success');
@@ -875,22 +1031,18 @@
         this.textContent = '📩 Отправить заявку';
       });
 
-      // Загрузка каталога с реальным обновлением
       function loadCatalog() {
         catalogContainer.innerHTML = `<div class="loading">⏳ Загрузка каталога...</div>`;
         
-        // Отписываемся от предыдущего слушателя, если он был
-        if (unsubscribe) {
-          unsubscribe();
-          unsubscribe = null;
+        if (unsubscribeCatalog) {
+          unsubscribeCatalog();
+          unsubscribeCatalog = null;
         }
         
         try {
-          // Используем onSnapshot для реального обновления данных
-          unsubscribe = db.collection("catalog")
+          unsubscribeCatalog = db.collection("catalog")
             .orderBy("createdAt", "desc")
             .onSnapshot({
-              // Включаем метаданные для определения источника данных
               includeMetadataChanges: true
             }, (snapshot) => {
               const items = [];
@@ -901,17 +1053,12 @@
                 });
               });
               
-              // Проверяем, изменились ли данные
               const changed = JSON.stringify(items) !== JSON.stringify(itemsCache);
               if (changed) {
                 console.log('🔄 Данные обновлены, товаров:', items.length);
-                // Показываем, откуда пришли данные (кеш или сервер)
-                const fromCache = snapshot.metadata.fromCache;
-                console.log(fromCache ? '📦 Данные из кеша' : '🌐 Данные с сервера');
                 itemsCache = items;
                 renderCatalog(items);
               } else if (itemsCache.length === 0) {
-                // Первая загрузка
                 itemsCache = items;
                 renderCatalog(items);
               }
@@ -936,19 +1083,32 @@
         }
       }
 
-      loadCatalog();
+      // Поиск
+      searchInput.addEventListener('input', function() {
+        searchQuery = this.value;
+        renderCatalog(itemsCache);
+      });
 
-      // Кнопка ручного обновления
+      // Загрузка
+      loadCatalog();
+      loadCategories();
+
+      // Кнопка обновления
       const refreshBtn = document.createElement('button');
       refreshBtn.className = 'refresh-btn';
       refreshBtn.innerHTML = '🔄 Обновить';
       refreshBtn.addEventListener('click', () => {
         showToast('🔄 Обновление...', '');
-        if (unsubscribe) {
-          unsubscribe();
-          unsubscribe = null;
+        if (unsubscribeCatalog) {
+          unsubscribeCatalog();
+          unsubscribeCatalog = null;
+        }
+        if (unsubscribeCategories) {
+          unsubscribeCategories();
+          unsubscribeCategories = null;
         }
         loadCatalog();
+        loadCategories();
         setTimeout(() => {
           showToast('✅ Каталог обновлен', 'success');
         }, 500);

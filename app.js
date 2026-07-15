@@ -1,7 +1,7 @@
 /*=========================================================
     APP.JS
     Прокат игрушек — Админ-панель с Firebase
-    Версия 10.0 (автоматическое обновление статуса и дат)
+    Версия 11.0 (категории товаров)
 =========================================================*/
 
 "use strict";
@@ -31,6 +31,7 @@ const LOGIN_KEY = "toy_admin";
 
 let catalog = [];
 let orders = [];
+let categories = [];
 let selectedFile = null;
 let editId = null;
 
@@ -73,6 +74,7 @@ const ui = {
     editModal      : $("editModal"),
     editForm       : $("editForm"),
     editName       : $("editName"),
+    editCategory   : $("editCategory"),
     editStatus     : $("editStatus"),
     editDescription: $("editDescription"),
     editFile       : $("editFile"),
@@ -82,7 +84,13 @@ const ui = {
     rentPrice14    : $("rentPrice14"),
     rentPrice30    : $("rentPrice30"),
     itemDescription: $("itemDescription"),
-    itemStatus     : $("itemStatus")
+    itemStatus     : $("itemStatus"),
+    itemCategory   : $("itemCategory"),
+    addCategoryBtn : $("addCategoryBtn"),
+    categoryModal  : $("categoryModal"),
+    newCategoryInput: $("newCategoryInput"),
+    saveCategoryBtn: $("saveCategoryBtn"),
+    cancelCategoryBtn: $("cancelCategoryBtn")
 };
 
 /*=========================================================
@@ -130,6 +138,7 @@ async function login() {
         toast("Добро пожаловать!");
         loadCatalog();
         loadOrders();
+        loadCategories();
     } catch (error) {
         console.error("Ошибка входа:", error);
         toast("Неверный email или пароль");
@@ -162,6 +171,7 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         loadCatalog();
         loadOrders();
+        loadCategories();
     }
 });
 
@@ -191,18 +201,9 @@ function truncateText(text, maxLength) {
     return text.slice(0, maxLength) + "...";
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return "—";
-    // Если пришла строка
-    if (typeof dateStr === 'string') {
-        const parts = dateStr.split("-");
-        if (parts.length === 3) {
-            return `${parts[2]}.${parts[1]}.${parts[0]}`;
-        }
-        return dateStr;
-    }
-    // Если пришел timestamp или Date
-    const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
+function formatDate(timestamp) {
+    if (!timestamp) return "—";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
 }
 
@@ -241,10 +242,100 @@ function formatPrice(price) {
     return price + " ₽";
 }
 
-function getRentEndDate(startDate, days) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
+/*=========================================================
+    CATEGORIES
+=========================================================*/
+
+function loadCategories() {
+    db.collection("categories")
+      .orderBy("name")
+      .onSnapshot((snapshot) => {
+          categories = [];
+          snapshot.forEach((doc) => {
+              categories.push({ 
+                  id: doc.id, 
+                  ...doc.data() 
+              });
+          });
+          updateCategorySelects();
+      }, (error) => {
+          console.error("Ошибка загрузки категорий:", error);
+      });
+}
+
+function updateCategorySelects() {
+    const selects = [ui.itemCategory, ui.editCategory];
+    selects.forEach(select => {
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Выберите категорию...</option>';
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = cat.name;
+            select.appendChild(option);
+        });
+        if (currentValue && categories.some(c => c.name === currentValue)) {
+            select.value = currentValue;
+        }
+    });
+}
+
+async function addCategory(name) {
+    if (!name || !name.trim()) {
+        toast("Введите название категории");
+        return;
+    }
+    name = name.trim();
+    
+    // Проверяем, существует ли уже такая категория
+    if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        toast("Такая категория уже существует");
+        return;
+    }
+    
+    try {
+        await db.collection("categories").add({
+            name: name,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast(`Категория "${name}" добавлена`);
+        closeCategoryModal();
+    } catch (error) {
+        console.error("Ошибка добавления категории:", error);
+        toast("Ошибка добавления категории");
+    }
+}
+
+// Модалка категории
+ui.addCategoryBtn.addEventListener("click", () => {
+    ui.categoryModal.classList.add("active");
+    ui.newCategoryInput.value = "";
+    ui.newCategoryInput.focus();
+});
+
+ui.cancelCategoryBtn.addEventListener("click", closeCategoryModal);
+ui.categoryModal.addEventListener("click", (e) => {
+    if (e.target === ui.categoryModal) closeCategoryModal();
+});
+
+ui.newCategoryInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        ui.saveCategoryBtn.click();
+    }
+    if (e.key === "Escape") {
+        closeCategoryModal();
+    }
+});
+
+ui.saveCategoryBtn.addEventListener("click", () => {
+    const name = ui.newCategoryInput.value.trim();
+    addCategory(name);
+});
+
+function closeCategoryModal() {
+    ui.categoryModal.classList.remove("active");
+    ui.newCategoryInput.value = "";
 }
 
 /*=========================================================
@@ -351,6 +442,7 @@ async function addItem(e) {
     }
 
     const status = ui.itemStatus.value;
+    const category = ui.itemCategory.value;
     const description = ui.itemDescription.value.trim();
     const price14 = parseInt(ui.rentPrice14.value) || 0;
     const price30 = parseInt(ui.rentPrice30.value) || 0;
@@ -363,6 +455,7 @@ async function addItem(e) {
     const newItem = {
         name: name,
         description: description || "",
+        category: category || "",
         status: status,
         rentPrice14: price14,
         rentPrice30: price30,
@@ -420,6 +513,7 @@ async function copyItem(firebaseId) {
     const copy = { 
         name: item.name + " (копия)",
         description: item.description || "",
+        category: item.category || "",
         status: item.status,
         rentPrice14: item.rentPrice14 || 0,
         rentPrice30: item.rentPrice30 || 0,
@@ -461,27 +555,20 @@ function loadOrders() {
       });
 }
 
-/*=========================================================
-    ПОДТВЕРЖДЕНИЕ ЗАЯВКИ (с обновлением товара)
-=========================================================*/
-
 async function confirmOrder(orderId) {
     try {
-        // Находим заявку
         const order = orders.find(o => o.orderId === orderId);
         if (!order) {
             toast("Ошибка: заявка не найдена");
             return;
         }
 
-        // Находим товар
         const item = catalog.find(i => i.firebaseId === order.itemId);
         if (!item) {
             toast("Ошибка: товар не найден");
             return;
         }
 
-        // Рассчитываем дату окончания аренды
         const today = new Date();
         const days = order.rentOption === "14" ? 14 : 30;
         const endDate = new Date(today);
@@ -490,14 +577,12 @@ async function confirmOrder(orderId) {
         const rentStart = today.toISOString().split('T')[0];
         const rentEnd = endDate.toISOString().split('T')[0];
 
-        // Обновляем товар: меняем статус и добавляем даты
         await db.collection("catalog").doc(item.firebaseId).update({
             status: "rented",
             rentStart: rentStart,
             rentEnd: rentEnd
         });
 
-        // Обновляем заявку
         await db.collection("orders").doc(orderId).update({
             status: "confirmed",
             confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -511,32 +596,22 @@ async function confirmOrder(orderId) {
     }
 }
 
-/*=========================================================
-    ОТКЛОНЕНИЕ ЗАЯВКИ
-=========================================================*/
-
 async function cancelOrder(orderId) {
     try {
-        // Находим заявку
         const order = orders.find(o => o.orderId === orderId);
         if (!order) {
             toast("Ошибка: заявка не найдена");
             return;
         }
 
-        // Находим товар
         const item = catalog.find(i => i.firebaseId === order.itemId);
         
-        // Обновляем заявку
         await db.collection("orders").doc(orderId).update({
             status: "cancelled",
             cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Если товар был в статусе "rented" (если админ случайно отклонил после подтверждения),
-        // возвращаем его в "available"
         if (item && item.status === "rented" && item.rentStart) {
-            // Проверяем, не был ли товар сдан в аренду по другой заявке
             const otherActiveOrders = orders.filter(o => 
                 o.itemId === order.itemId && 
                 o.status === "confirmed" && 
@@ -586,7 +661,8 @@ function getVisibleItems() {
     if (searchText) {
         arr = arr.filter(item => 
             item.name.toLowerCase().includes(searchText) ||
-            (item.description && item.description.toLowerCase().includes(searchText))
+            (item.description && item.description.toLowerCase().includes(searchText)) ||
+            (item.category && item.category.toLowerCase().includes(searchText))
         );
     }
 
@@ -633,7 +709,6 @@ function createCard(item) {
         priceHtml += `</div>`;
     }
 
-    // Отображаем даты аренды, если товар в прокате
     let rentDatesHtml = "";
     if (item.status === "rented" && item.rentStart && item.rentEnd) {
         const days = getRentalDays(item.rentStart, item.rentEnd);
@@ -645,6 +720,10 @@ function createCard(item) {
         `;
     }
 
+    const categoryHtml = item.category 
+        ? `<span class="category-tag admin">📂 ${item.category}</span>`
+        : "";
+
     const descriptionHtml = item.description 
         ? `<div class="admin-card__description">${truncateText(item.description, 100)}</div>`
         : "";
@@ -654,6 +733,7 @@ function createCard(item) {
             ${mediaHtml}
             <div class="admin-card__body">
                 <h3 class="admin-card__title">${item.name}</h3>
+                ${categoryHtml}
                 ${descriptionHtml}
                 <p class="${statusClass[item.status]}">${statusName[item.status]}</p>
                 ${priceHtml}
@@ -795,6 +875,7 @@ function openEditor(firebaseId) {
     editId = firebaseId;
     
     ui.editName.value = item.name;
+    ui.editCategory.value = item.category || "";
     ui.editStatus.value = item.status;
     ui.editDescription.value = item.description || "";
     ui.editRentPrice14.value = item.rentPrice14 || "";
@@ -832,13 +913,13 @@ ui.editForm.addEventListener("submit", async e => {
 
     const data = {
         name: ui.editName.value.trim(),
+        category: ui.editCategory.value || "",
         description: ui.editDescription.value.trim() || "",
         status: ui.editStatus.value,
         rentPrice14: price14,
         rentPrice30: price30
     };
 
-    // Если меняем статус на "available" или "soon" — очищаем даты
     if (data.status !== "rented") {
         data.rentStart = "";
         data.rentEnd = "";
@@ -865,7 +946,10 @@ ui.editForm.addEventListener("submit", async e => {
 });
 
 document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeEditor();
+    if (e.key === "Escape") {
+        closeEditor();
+        closeCategoryModal();
+    }
 });
 
 /*=========================================================
@@ -889,12 +973,14 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         loadCatalog();
         loadOrders();
+        loadCategories();
     }
 });
 
 if (isLogged()) {
     loadCatalog();
     loadOrders();
+    loadCategories();
 }
 
 toast("Админ-панель готова");
